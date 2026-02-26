@@ -133,7 +133,7 @@ class Settings(BaseSettings):
     gpu: GPUConfig = Field(default_factory=GPUConfig)
 
     # API tokens
-    sd_model: str = "stabilityai/stable-diffusion-2-1"
+    sd_model: str = "CompVis/stable-diffusion-v1-4"
 
     # Pipeline
     max_retries: int = 3

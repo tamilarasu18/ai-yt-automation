@@ -87,6 +87,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
                 self._model_id,
                 torch_dtype=torch.float16,
                 safety_checker=None,
+                token=False,  # No HuggingFace auth needed
             )
             pipe.enable_model_cpu_offload()
 
@@ -267,6 +268,7 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
                 self._model_id,
                 torch_dtype=torch.float16,
                 safety_checker=None,
+                token=False,  # No HuggingFace auth needed
             )
             pipe.enable_model_cpu_offload()
 
