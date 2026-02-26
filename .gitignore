@@ -79,7 +79,6 @@ htmlcov/
 # Colab / Jupyter
 # ══════════════════════════════════════════
 .ipynb_checkpoints/
-*.ipynb
 
 # ══════════════════════════════════════════
 # SadTalker (cloned at runtime)
