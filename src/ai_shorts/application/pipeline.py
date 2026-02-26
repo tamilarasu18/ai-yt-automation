@@ -116,6 +116,19 @@ class PipelineOrchestrator:
     def _generate_video(self, topic_text: str, language: Language, mode: str) -> VideoOutput:
         """Generate a single video for one language.
 
+        11-step pipeline:
+        1. Fetch topic (done before this method)
+        2. Generate story
+        3. Generate SEO metadata
+        4. Generate 5 image prompts from story
+        5. Generate 5 scene images (Stable Diffusion)
+        6. Generate audio
+        7. Generate avatar (SadTalker)
+        8. Generate subtitles
+        9. Compose slideshow video
+        10. Upload YouTube (with scheduler)
+        11. Backup + Notify
+
         Args:
             topic_text: The topic text.
             language: Target language.
@@ -126,8 +139,8 @@ class PipelineOrchestrator:
         """
         from ai_shorts.application.use_cases import (
             CreateAvatarVideoUseCase,
-            GenerateBackgroundUseCase,
             GenerateMetadataUseCase,
+            GenerateSceneImagesUseCase,
             GenerateStoryUseCase,
             GenerateSubtitlesUseCase,
             GenerateVoiceUseCase,
@@ -142,40 +155,49 @@ class PipelineOrchestrator:
             story_uc = GenerateStoryUseCase(self._container.story_generator())
             story = story_uc.execute(topic_text, language)
 
-        # Free GPU: unload LLM before next GPU step
+        # ── Step 3: Generate SEO Metadata ──
+        with self._timer.step("SEO Metadata Generation"):
+            meta_uc = GenerateMetadataUseCase(self._container.metadata_generator())
+            metadata = meta_uc.execute(topic_text, language, story.text)
+
+        # ── Step 4 + 5: Generate 5 Image Prompts → 5 Scene Images ──
+        scene_dir = output_dir / "scenes"
+        scene_images = []
+        with self._timer.step("Scene Image Generation (5 images)"):
+            scene_uc = GenerateSceneImagesUseCase(
+                prompt_generator=self._container.image_prompt_generator(),
+                scene_generator=self._container.scene_image_generator(),
+            )
+            scene_assets = scene_uc.execute(story.text, scene_dir, num_scenes=5)
+            scene_images = [asset.path for asset in scene_assets]
+        free_gpu_memory()
+
+        # Free GPU: unload LLM before TTS/avatar
         self._unload_ollama()
 
-        # ── Step 3: Generate Voice ──
+        # ── Step 6: Generate Audio ──
         audio_path = output_dir / "voice.wav"
         with self._timer.step(f"Voice Synthesis ({language.display_name})"):
             voice_uc = GenerateVoiceUseCase(self._container.voice_generator())
             voice = voice_uc.execute(story.text, language, audio_path)
 
-        # ── Step 4: Generate Avatar Video ──
+        if mode == "test":
+            # Test mode: stop after story + images + audio
+            log.info("✅ TEST PIPELINE COMPLETE")
+            return VideoOutput(
+                local_path=audio_path,
+                duration_seconds=voice.duration_seconds,
+            )
+
+        # ── Step 7: Generate Avatar Video (SadTalker) ──
         avatar_path = output_dir / "avatar.mp4"
         avatar_image = Path(self._settings.avatar_image_path)
         with self._timer.step(f"Avatar Animation ({language.display_name})"):
             avatar_uc = CreateAvatarVideoUseCase(self._container.avatar_animator())
             avatar_asset = avatar_uc.execute(audio_path, avatar_image, avatar_path)
-
         free_gpu_memory()
 
-        if mode == "test":
-            # Test mode ends here — avatar video is the final output
-            log.info("✅ TEST PIPELINE COMPLETE")
-            return VideoOutput(
-                local_path=avatar_asset.path,
-                duration_seconds=voice.duration_seconds,
-            )
-
-        # ── Full Pipeline: Additional Steps ──
-
-        # Step 5: Generate Metadata
-        with self._timer.step("Metadata Generation"):
-            meta_uc = GenerateMetadataUseCase(self._container.metadata_generator())
-            metadata = meta_uc.execute(topic_text, language, story.text)
-
-        # Step 6: Generate Subtitles
+        # ── Step 8: Generate Subtitles ──
         subtitle_path = output_dir / "subtitles.srt"
         subtitle_asset = None
         try:
@@ -186,27 +208,20 @@ class PipelineOrchestrator:
         except Exception as e:
             log.warning("⚠️  Subtitle generation failed (continuing): %s", e)
 
-        # Step 7: Generate Background
-        bg_path = output_dir / "background.png"
-        with self._timer.step("Background Generation"):
-            bg_uc = GenerateBackgroundUseCase(self._container.background_generator())
-            bg_asset = bg_uc.execute(topic_text, language, bg_path)
-        free_gpu_memory()
-
-        # Step 8: Compose Final Video
+        # ── Step 9: Compose Slideshow Video ──
         final_path = output_dir / "final_video.mp4"
-        with self._timer.step("Video Composition"):
+        with self._timer.step("Slideshow Video Composition"):
             composer = self._container.video_composer()
-            composer.compose(
+            composer.compose_slideshow(
+                scene_images=scene_images,
                 avatar_video=avatar_asset.path,
-                background=bg_asset.path,
                 subtitles=subtitle_asset.path if subtitle_asset else None,
                 audio=audio_path,
                 output_path=final_path,
                 duration=voice.duration_seconds,
             )
 
-        # Step 9: Publish
+        # ── Step 10 + 11: Publish (YouTube + Drive + Telegram) ──
         youtube_url = ""
         drive_path = ""
         with self._timer.step("Publishing"):

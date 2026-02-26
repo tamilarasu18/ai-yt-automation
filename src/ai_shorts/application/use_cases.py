@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ai_shorts.domain.entities import Story, VideoAsset, VideoMetadata, Voice
+from ai_shorts.domain.entities import SceneSegment, Story, VideoAsset, VideoMetadata, Voice
 from ai_shorts.domain.exceptions import (
     AvatarAnimationError,
     BackgroundGenerationError,
@@ -23,8 +23,10 @@ from ai_shorts.domain.exceptions import (
 from ai_shorts.domain.ports import (
     AvatarAnimator,
     BackgroundGenerator,
+    ImagePromptGenerator,
     MetadataGenerator,
     NotificationService,
+    SceneImageGenerator,
     StorageService,
     StoryGenerator,
     SubtitleGenerator,
@@ -34,6 +36,65 @@ from ai_shorts.domain.ports import (
 from ai_shorts.domain.value_objects import Language
 
 log = logging.getLogger(__name__)
+
+
+class GenerateSceneImagesUseCase:
+    """Generate multiple scene images from a story.
+
+    Flow: Story → LLM (5 prompts) → SD (5 images)
+    """
+
+    def __init__(
+        self,
+        prompt_generator: ImagePromptGenerator,
+        scene_generator: SceneImageGenerator,
+    ) -> None:
+        self._prompt_gen = prompt_generator
+        self._scene_gen = scene_generator
+
+    def execute(
+        self,
+        story_text: str,
+        output_dir: Path,
+        num_scenes: int = 5,
+    ) -> list[VideoAsset]:
+        """Generate scene images from a story.
+
+        Args:
+            story_text: The full story text.
+            output_dir: Directory to save images.
+            num_scenes: Number of scenes (default 5).
+
+        Returns:
+            List of VideoAsset for the generated images.
+
+        Raises:
+            BackgroundGenerationError: If image generation fails.
+        """
+        try:
+            log.info("🎨 Generating %d scene prompts from story...", num_scenes)
+            prompts = self._prompt_gen.generate_scene_prompts(story_text, num_scenes)
+            for i, p in enumerate(prompts, 1):
+                log.info("   Scene %d: %s", i, p[:60])
+
+            # Build SceneSegment entities
+            segments = [
+                SceneSegment(
+                    start=0.0,
+                    end=0.0,
+                    image_number=i + 1,
+                    prompt=prompt,
+                )
+                for i, prompt in enumerate(prompts)
+            ]
+
+            log.info("🖼️  Generating %d scene images...", num_scenes)
+            return self._scene_gen.generate_scenes(segments, output_dir)
+
+        except BackgroundGenerationError:
+            raise
+        except Exception as e:
+            raise BackgroundGenerationError(f"Scene image generation failed: {e}", cause=e) from e
 
 
 class GenerateStoryUseCase:

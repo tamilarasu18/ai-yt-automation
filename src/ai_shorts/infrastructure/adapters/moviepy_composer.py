@@ -181,6 +181,162 @@ class MoviePyVideoComposer(VideoComposer):
         except Exception as e:
             raise VideoCompositionError(f"Video composition failed: {e}", cause=e) from e
 
+    def compose_slideshow(
+        self,
+        scene_images: list[Path],
+        avatar_video: Path,
+        subtitles: Path | None,
+        audio: Path,
+        output_path: Path,
+        duration: float,
+        background_music: Path | None = None,
+    ) -> VideoAsset:
+        """Compose a slideshow video with avatar overlay.
+
+        Layout (9:16 portrait):
+        ┌──────────────────┐
+        │                  │
+        │   Scene Image    │
+        │  (full screen)   │
+        │                  │
+        │         ┌──────┐ │
+        │         │Avatar│ │
+        │         │(mini)│ │
+        │         └──────┘ │
+        │   ── Subtitles ──│
+        └──────────────────┘
+
+        Args:
+            scene_images: List of scene image paths (5 images).
+            avatar_video: Talking-head video from SadTalker.
+            subtitles: Optional SRT/JSON subtitle file.
+            audio: Voice audio file.
+            output_path: Where to save the final video.
+            duration: Target duration in seconds.
+            background_music: Optional background music.
+
+        Returns:
+            VideoAsset for the composed video.
+        """
+        try:
+            from moviepy.editor import (
+                AudioFileClip,
+                CompositeAudioClip,
+                CompositeVideoClip,
+                ImageClip,
+                VideoFileClip,
+                concatenate_audioclips,
+            )
+        except ImportError as e:
+            raise VideoCompositionError(
+                "moviepy not installed. Run: pip install moviepy==1.0.3",
+                cause=e,
+            ) from e
+
+        log.info(
+            "🎬 Composing slideshow video (%dx%d, %d images)...",
+            self._width,
+            self._height,
+            len(scene_images),
+        )
+
+        bg_music = background_music or self._bg_music_path
+
+        try:
+            # Calculate per-image duration
+            num_images = len(scene_images)
+            per_image = duration / num_images
+            fade = min(0.5, per_image * 0.1)  # 10% fade or 0.5s max
+
+            # Build slideshow from scene images
+            image_clips = []
+            for i, img_path in enumerate(scene_images):
+                clip = (
+                    ImageClip(str(img_path))
+                    .set_duration(per_image)
+                    .resize((self._width, self._height))
+                    .set_start(i * per_image)
+                    .crossfadein(fade if i > 0 else 0)
+                )
+                image_clips.append(clip)
+
+            slideshow = CompositeVideoClip(
+                image_clips,
+                size=(self._width, self._height),
+            ).set_duration(duration)
+
+            # Load avatar video and create circular overlay
+            avatar_clip = VideoFileClip(str(avatar_video))
+            avatar_size = int(self._width * 0.25)  # 25% of video width
+            avatar_overlay = (
+                avatar_clip.subclip(0, min(avatar_clip.duration, duration))
+                .resize((avatar_size, avatar_size))
+                .set_position(
+                    (
+                        self._width - avatar_size - 30,  # right margin
+                        self._height - avatar_size - 180,  # above subtitles
+                    )
+                )
+            )
+
+            # Build layers: slideshow + avatar overlay
+            layers = [slideshow, avatar_overlay]
+
+            # Add styled subtitles
+            subtitle_clips = self._build_subtitle_clips(subtitles, (self._width, self._height))
+            if subtitle_clips:
+                layers.extend(subtitle_clips)
+
+            # Composite all layers
+            final = CompositeVideoClip(
+                layers,
+                size=(self._width, self._height),
+            ).set_duration(duration)
+
+            # Build audio: voice + optional background music
+            voice_audio = AudioFileClip(str(audio)).subclip(0, duration)
+            audio_layers = [voice_audio]
+
+            if bg_music and Path(bg_music).exists():
+                bg_audio = AudioFileClip(str(bg_music)).volumex(0.01)
+                if bg_audio.duration < duration:
+                    loops = int(duration / bg_audio.duration) + 1
+                    bg_audio = concatenate_audioclips([bg_audio] * loops)
+                bg_audio = bg_audio.subclip(0, duration)
+                audio_layers.append(bg_audio)
+                log.info("🎵 Background music mixed at 1%% volume")
+
+            final_audio = CompositeAudioClip(audio_layers)
+            final = final.set_audio(final_audio)
+
+            # Write video
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            final.write_videofile(
+                str(output_path),
+                fps=self._fps,
+                codec="libx264",
+                audio_codec="aac",
+                logger=None,
+            )
+
+            # Clean up
+            avatar_clip.close()
+            voice_audio.close()
+
+            log.info("✅ Slideshow video composed: %s", output_path)
+            return VideoAsset(
+                path=output_path,
+                asset_type=AssetType.COMPOSED_VIDEO,
+                duration_seconds=duration,
+                width=self._width,
+                height=self._height,
+            )
+
+        except VideoCompositionError:
+            raise
+        except Exception as e:
+            raise VideoCompositionError(f"Slideshow composition failed: {e}", cause=e) from e
+
     def _build_subtitle_clips(
         self,
         subtitle_path: Path | None,

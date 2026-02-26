@@ -121,7 +121,7 @@ class Settings(BaseSettings):
     # Paths
     work_dir: Path = Path("/content/ai-shorts")
     output_dir: Path = Path("/content/ai-shorts/output")
-    avatar_image_path: str = ""
+    avatar_image_path: str = "assets/images/avatar.png"
     drive_output_folder: str = ""
 
     # Nested configs

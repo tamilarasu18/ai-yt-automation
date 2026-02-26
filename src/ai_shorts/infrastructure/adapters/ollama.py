@@ -300,10 +300,10 @@ Return EXACTLY this JSON format (no other text):
 
 
 class OllamaImagePromptGenerator(ImagePromptGenerator):
-    """Generates image generation prompts from story text using Ollama.
+    """Generates multiple scene-specific image prompts from story text.
 
-    Summarizes a story into a single-line visual scene description
-    suitable for image generation APIs (SDXL, FLUX.1-dev, etc.).
+    Splits a story into visual scenes and generates one image-generation
+    prompt per scene, suitable for slideshow-style video composition.
     """
 
     def __init__(self, settings: Settings, llm: LLMService) -> None:
@@ -311,15 +311,54 @@ class OllamaImagePromptGenerator(ImagePromptGenerator):
         self._llm = llm
 
     def generate_prompt(self, story_text: str) -> str:
-        """Generate a single-line image prompt from a story."""
+        """Generate a single image prompt (for backward compatibility)."""
+        prompts = self.generate_scene_prompts(story_text, num_scenes=1)
+        return prompts[0] if prompts else ""
+
+    def generate_scene_prompts(self, story_text: str, num_scenes: int = 5) -> list[str]:
+        """Generate multiple scene-specific image prompts from a story.
+
+        Args:
+            story_text: The full story text.
+            num_scenes: Number of scene prompts to generate (default 5).
+
+        Returns:
+            List of image generation prompts (one per scene).
+        """
         prompt = (
-            "Summarize the following motivational story into a single-line "
-            "prompt for AI image generation. The prompt should describe one "
-            "key visual scene from the story that captures its essence. "
-            "Keep it short, clear, and suitable for generating a single "
-            "image without including any text or words in the image.\n\n"
+            f"Read the following motivational story and break it into "
+            f"exactly {num_scenes} visual scenes. For each scene, write a "
+            f"single-line prompt for AI image generation.\n\n"
+            f"Rules:\n"
+            f"- Each prompt must describe ONE vivid, cinematic visual scene\n"
+            f"- No text, no words, no letters in the images\n"
+            f"- Each prompt should be different and progress the story\n"
+            f"- Keep prompts short (under 30 words each)\n"
+            f"- Use cinematic, dramatic, emotional imagery\n"
+            f"- Return ONLY the {num_scenes} prompts, one per line, "
+            f"numbered 1-{num_scenes}\n\n"
             f"Story:\n{story_text.strip()}\n\n"
-            "One-line Image Prompt:"
+            f"Image Prompts:"
         )
-        result = self._llm.generate(prompt)
-        return result.strip().strip('"').strip("'")
+
+        raw = self._llm.generate(prompt)
+        return self._parse_prompts(raw, num_scenes)
+
+    @staticmethod
+    def _parse_prompts(raw: str, expected: int) -> list[str]:
+        """Parse numbered prompts from LLM output."""
+        lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
+        prompts = []
+        for line in lines:
+            # Remove numbering like "1.", "1)", "1:", etc.
+            cleaned = re.sub(r"^\d+[\.\)\:\-]\s*", "", line).strip()
+            cleaned = cleaned.strip('"').strip("'")
+            if cleaned and len(cleaned) > 10:
+                prompts.append(cleaned)
+
+        # Pad if fewer than expected
+        if len(prompts) < expected and prompts:
+            while len(prompts) < expected:
+                prompts.append(prompts[-1])
+
+        return prompts[:expected]

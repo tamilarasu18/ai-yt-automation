@@ -29,6 +29,7 @@ if TYPE_CHECKING:
         LLMService,
         MetadataGenerator,
         NotificationService,
+        SceneImageGenerator,
         StorageService,
         StoryGenerator,
         SubtitleGenerator,
@@ -140,6 +141,15 @@ class Container:
         )
 
         return OllamaImagePromptGenerator(self._settings, self.llm_service())
+
+    @lru_cache(maxsize=1)
+    def scene_image_generator(self) -> SceneImageGenerator:
+        """Resolve SceneImageGenerator → StableDiffusionSceneImageGenerator."""
+        from ai_shorts.infrastructure.adapters.flux_image import (
+            StableDiffusionSceneImageGenerator,
+        )
+
+        return StableDiffusionSceneImageGenerator(self._settings)
 
     @lru_cache(maxsize=1)
     def video_composer(self) -> VideoComposer:
