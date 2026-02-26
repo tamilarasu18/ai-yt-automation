@@ -72,8 +72,8 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
             "deformed, noisy, oversaturated, cartoon, anime"
         )
 
-        # Portrait for YouTube Shorts
-        width, height = 768, 1344  # ~9:16 ratio
+        # Portrait for YouTube Shorts (512x912 fits T4 15GB VRAM)
+        width, height = 512, 912  # ~9:16 ratio, upscaled by MoviePy
 
         log.info(
             "🖼️  Generating SD image (%s, %d steps)...",
@@ -251,8 +251,8 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
             "deformed, noisy, oversaturated, cartoon, anime"
         )
 
-        # Portrait for YouTube Shorts
-        width, height = 768, 1344
+        # Portrait for YouTube Shorts (512x912 fits T4 15GB VRAM)
+        width, height = 512, 912
 
         log.info(
             "🖼️  Generating %d scene images (%s)...",

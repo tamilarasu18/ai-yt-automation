@@ -83,9 +83,9 @@ class VideoConfig(BaseSettings):
 class GPUConfig(BaseSettings):
     """GPU-dependent model configuration."""
 
-    whisper_model_size: str = "large-v3"
+    whisper_model_size: str = "base"
     sdxl_model: str = "stabilityai/stable-diffusion-xl-base-1.0"
-    sdxl_inference_steps: int = 25
+    sdxl_inference_steps: int = 20
     sadtalker_dir: str = "/content/SadTalker"
 
     model_config = SettingsConfigDict(env_prefix="")
