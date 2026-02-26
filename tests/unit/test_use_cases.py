@@ -49,9 +49,7 @@ class TestGenerateStoryUseCase:
 
     def test_too_short_story_raises(self) -> None:
         mock_generator = MagicMock()
-        mock_generator.generate.return_value = Story(
-            text="Too short", language=Language.ENGLISH
-        )
+        mock_generator.generate.return_value = Story(text="Too short", language=Language.ENGLISH)
 
         use_case = GenerateStoryUseCase(mock_generator)
         with pytest.raises(StoryGenerationError, match="too short"):
@@ -124,9 +122,7 @@ class TestPublishVideoUseCase:
         mock_storage.save.return_value = "/drive/video.mp4"
 
         use_case = PublishVideoUseCase(storage=mock_storage)
-        youtube_url, drive_path = use_case.execute(
-            video_path, "Title", "Desc", [], upload=False
-        )
+        youtube_url, drive_path = use_case.execute(video_path, "Title", "Desc", [], upload=False)
 
         assert youtube_url == ""
         assert drive_path == "/drive/video.mp4"

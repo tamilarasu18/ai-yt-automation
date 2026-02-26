@@ -35,9 +35,7 @@ class SDXLBackgroundGenerator(BackgroundGenerator):
         self._model_id = settings.gpu.sdxl_model
         self._inference_steps = settings.gpu.sdxl_inference_steps
 
-    def generate(
-        self, topic: str, language: Language, output_path: Path
-    ) -> VideoAsset:
+    def generate(self, topic: str, language: Language, output_path: Path) -> VideoAsset:
         """Generate a cinematic background image.
 
         Args:
@@ -62,8 +60,7 @@ class SDXLBackgroundGenerator(BackgroundGenerator):
 
         prompt = self._build_prompt(topic, language)
         negative_prompt = (
-            "text, watermark, logo, blurry, low quality, ugly, "
-            "deformed, noisy, oversaturated"
+            "text, watermark, logo, blurry, low quality, ugly, deformed, noisy, oversaturated"
         )
 
         log.info("🖼️  Generating SDXL background (%d steps)...", self._inference_steps)

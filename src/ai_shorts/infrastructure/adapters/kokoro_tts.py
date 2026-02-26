@@ -99,15 +99,10 @@ class KokoroVoiceGenerator(VoiceGenerator):
         except VoiceGenerationError:
             raise
         except Exception as e:
-            raise VoiceGenerationError(
-                f"Kokoro TTS failed: {e}", cause=e
-            ) from e
+            raise VoiceGenerationError(f"Kokoro TTS failed: {e}", cause=e) from e
 
     @staticmethod
     def _split_text(text: str, max_words: int = 100) -> list[str]:
         """Split text into chunks of approximately max_words words."""
         words = text.split()
-        return [
-            " ".join(words[i : i + max_words])
-            for i in range(0, len(words), max_words)
-        ]
+        return [" ".join(words[i : i + max_words]) for i in range(0, len(words), max_words)]

@@ -42,9 +42,7 @@ class WhisperSubtitleGenerator(SubtitleGenerator):
         self._model_size = settings.gpu.whisper_model_size
         self._fallback_models = ["medium", "base"]
 
-    def transcribe(
-        self, audio_path: Path, language: Language, output_path: Path
-    ) -> VideoAsset:
+    def transcribe(self, audio_path: Path, language: Language, output_path: Path) -> VideoAsset:
         """Transcribe audio to SRT subtitle file.
 
         Args:
@@ -96,18 +94,12 @@ class WhisperSubtitleGenerator(SubtitleGenerator):
 
             except RuntimeError as e:
                 if "out of memory" in str(e).lower() or "CUDA" in str(e):
-                    log.warning(
-                        "⚠️  Whisper '%s' OOM, trying smaller model...", model_name
-                    )
+                    log.warning("⚠️  Whisper '%s' OOM, trying smaller model...", model_name)
                     free_gpu_memory()
                     continue
-                raise SubtitleError(
-                    f"Whisper transcription failed: {e}", cause=e
-                ) from e
+                raise SubtitleError(f"Whisper transcription failed: {e}", cause=e) from e
 
-        raise SubtitleError(
-            f"All Whisper models failed ({', '.join(models_to_try)})"
-        )
+        raise SubtitleError(f"All Whisper models failed ({', '.join(models_to_try)})")
 
     @staticmethod
     def _write_srt(segments: list[dict], output_path: Path) -> None:

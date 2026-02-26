@@ -126,9 +126,7 @@ class MoviePyVideoComposer(VideoComposer):
             layers = [bg_clip, avatar_positioned]
 
             # Add styled subtitles if available
-            subtitle_clips = self._build_subtitle_clips(
-                subtitles, (self._width, self._height)
-            )
+            subtitle_clips = self._build_subtitle_clips(subtitles, (self._width, self._height))
             if subtitle_clips:
                 layers.extend(subtitle_clips)
 
@@ -181,9 +179,7 @@ class MoviePyVideoComposer(VideoComposer):
         except VideoCompositionError:
             raise
         except Exception as e:
-            raise VideoCompositionError(
-                f"Video composition failed: {e}", cause=e
-            ) from e
+            raise VideoCompositionError(f"Video composition failed: {e}", cause=e) from e
 
     def _build_subtitle_clips(
         self,
@@ -299,22 +295,24 @@ class MoviePyVideoComposer(VideoComposer):
             return []
 
     @staticmethod
-    def _burn_subtitles_ffmpeg(
-        input_video: Path, subtitle_path: Path, output_path: Path
-    ) -> None:
+    def _burn_subtitles_ffmpeg(input_video: Path, subtitle_path: Path, output_path: Path) -> None:
         """Fallback: burn SRT subtitles into video using FFmpeg."""
         log.info("📝 Burning subtitles via FFmpeg (fallback)...")
         sub_escaped = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
         cmd = [
-            "ffmpeg", "-y",
-            "-i", str(input_video),
-            "-vf", (
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(input_video),
+            "-vf",
+            (
                 f"subtitles='{sub_escaped}':"
                 "force_style='FontName=Arial,FontSize=14,"
                 "PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
                 "Outline=2,Shadow=1,MarginV=40'"
             ),
-            "-c:a", "copy",
+            "-c:a",
+            "copy",
             str(output_path),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)

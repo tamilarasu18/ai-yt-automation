@@ -42,9 +42,7 @@ class SadTalkerAnimator(AvatarAnimator):
         self._enable_enhancer = settings.video.enable_face_enhancement
         self._output_dir = str(settings.output_dir)
 
-    def animate(
-        self, audio_path: Path, image_path: Path, output_path: Path
-    ) -> VideoAsset:
+    def animate(self, audio_path: Path, image_path: Path, output_path: Path) -> VideoAsset:
         """Generate a talking-head video.
 
         Args:
@@ -73,24 +71,24 @@ class SadTalkerAnimator(AvatarAnimator):
             )
 
         # Build inference command
-        enhancer_flag = (
-            ["--enhancer", "gfpgan"] if self._enable_enhancer else []
-        )
+        enhancer_flag = ["--enhancer", "gfpgan"] if self._enable_enhancer else []
 
         cmd = [
             sys.executable,
             f"{self._sadtalker_dir}/inference.py",
-            "--driven_audio", str(audio_path),
-            "--source_image", str(image_path),
-            "--result_dir", self._output_dir,
+            "--driven_audio",
+            str(audio_path),
+            "--source_image",
+            str(image_path),
+            "--result_dir",
+            self._output_dir,
             "--still",
-            "--preprocess", "crop",
+            "--preprocess",
+            "crop",
         ] + enhancer_flag
 
         log.info("   Command: %s", " ".join(cmd[:6]) + "...")
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=self._sadtalker_dir
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=self._sadtalker_dir)
 
         if result.returncode != 0:
             log.warning("⚠️  SadTalker failed, attempting Ken Burns fallback...")
@@ -132,16 +130,26 @@ class SadTalkerAnimator(AvatarAnimator):
         """
         log.info("🖼️  Creating Ken Burns zoom effect as fallback...")
         cmd = [
-            "ffmpeg", "-y",
-            "-loop", "1",
-            "-i", str(image_path),
-            "-i", str(audio_path),
-            "-c:v", "libx264",
-            "-tune", "stillimage",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-pix_fmt", "yuv420p",
-            "-vf", "zoompan=z='min(zoom+0.001,1.3)':d=1:s=512x512:fps=30",
+            "ffmpeg",
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(image_path),
+            "-i",
+            str(audio_path),
+            "-c:v",
+            "libx264",
+            "-tune",
+            "stillimage",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            "zoompan=z='min(zoom+0.001,1.3)':d=1:s=512x512:fps=30",
             "-shortest",
             str(output_path),
         ]

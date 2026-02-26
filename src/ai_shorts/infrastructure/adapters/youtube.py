@@ -68,9 +68,7 @@ class YouTubeUploader(VideoUploader):
             from googleapiclient.discovery import build
             from googleapiclient.http import MediaFileUpload
         except ImportError as e:
-            raise UploadError(
-                "google-api-python-client not installed", cause=e
-            ) from e
+            raise UploadError("google-api-python-client not installed", cause=e) from e
 
         log.info("📺 Uploading to YouTube: '%s'...", title)
 
@@ -88,7 +86,9 @@ class YouTubeUploader(VideoUploader):
             body = {
                 "snippet": {
                     "title": title[:100],
-                    "description": f"{description}\n\n{' '.join(f'#{t}' for t in tags[:10])}"[:5000],
+                    "description": f"{description}\n\n{' '.join(f'#{t}' for t in tags[:10])}"[
+                        :5000
+                    ],
                     "tags": tags[:30],
                     "categoryId": "22",
                 },

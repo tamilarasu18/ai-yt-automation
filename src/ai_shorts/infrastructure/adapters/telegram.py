@@ -45,11 +45,13 @@ class TelegramNotifier(NotificationService):
             return False
 
         url = f"https://api.telegram.org/bot{self._token}/sendMessage"
-        payload = json.dumps({
-            "chat_id": self._chat_id,
-            "text": message,
-            "parse_mode": "Markdown",
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "chat_id": self._chat_id,
+                "text": message,
+                "parse_mode": "Markdown",
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             url, data=payload, headers={"Content-Type": "application/json"}

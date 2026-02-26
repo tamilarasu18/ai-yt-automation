@@ -71,9 +71,7 @@ class GenerateStoryUseCase:
         except ValueError as e:
             raise StoryGenerationError(str(e), cause=e) from e
         except Exception as e:
-            raise StoryGenerationError(
-                f"Failed to generate story: {e}", cause=e
-            ) from e
+            raise StoryGenerationError(f"Failed to generate story: {e}", cause=e) from e
 
 
 class GenerateMetadataUseCase:
@@ -129,9 +127,7 @@ class GenerateVoiceUseCase:
             log.info("✅ Voice generated: %.1fs", voice.duration_seconds)
             return voice
         except Exception as e:
-            raise VoiceGenerationError(
-                f"Voice synthesis failed: {e}", cause=e
-            ) from e
+            raise VoiceGenerationError(f"Voice synthesis failed: {e}", cause=e) from e
 
 
 class CreateAvatarVideoUseCase:
@@ -143,9 +139,7 @@ class CreateAvatarVideoUseCase:
     def __init__(self, animator: AvatarAnimator) -> None:
         self._animator = animator
 
-    def execute(
-        self, audio_path: Path, image_path: Path, output_path: Path
-    ) -> VideoAsset:
+    def execute(self, audio_path: Path, image_path: Path, output_path: Path) -> VideoAsset:
         """Create a talking-head video.
 
         Args:
@@ -165,9 +159,7 @@ class CreateAvatarVideoUseCase:
             log.info("✅ Avatar video generated: %s", result.path)
             return result
         except Exception as e:
-            raise AvatarAnimationError(
-                f"Avatar animation failed: {e}", cause=e
-            ) from e
+            raise AvatarAnimationError(f"Avatar animation failed: {e}", cause=e) from e
 
 
 class GenerateSubtitlesUseCase:
@@ -179,9 +171,7 @@ class GenerateSubtitlesUseCase:
     def __init__(self, subtitle_generator: SubtitleGenerator) -> None:
         self._generator = subtitle_generator
 
-    def execute(
-        self, audio_path: Path, language: Language, output_path: Path
-    ) -> VideoAsset:
+    def execute(self, audio_path: Path, language: Language, output_path: Path) -> VideoAsset:
         """Transcribe audio to subtitles.
 
         Args:
@@ -213,9 +203,7 @@ class GenerateBackgroundUseCase:
     def __init__(self, background_generator: BackgroundGenerator) -> None:
         self._generator = background_generator
 
-    def execute(
-        self, topic: str, language: Language, output_path: Path
-    ) -> VideoAsset:
+    def execute(self, topic: str, language: Language, output_path: Path) -> VideoAsset:
         """Generate a thematic background image.
 
         Args:
@@ -235,9 +223,7 @@ class GenerateBackgroundUseCase:
             log.info("✅ Background generated: %s", result.path)
             return result
         except Exception as e:
-            raise BackgroundGenerationError(
-                f"Background generation failed: {e}", cause=e
-            ) from e
+            raise BackgroundGenerationError(f"Background generation failed: {e}", cause=e) from e
 
 
 class PublishVideoUseCase:
@@ -294,14 +280,10 @@ class PublishVideoUseCase:
         # Upload to YouTube
         if upload and self._uploader:
             try:
-                youtube_url = self._uploader.upload(
-                    video_path, title, description, tags
-                )
+                youtube_url = self._uploader.upload(video_path, title, description, tags)
                 log.info("📺 Uploaded to YouTube: %s", youtube_url)
             except Exception as e:
-                raise UploadError(
-                    f"YouTube upload failed: {e}", cause=e
-                ) from e
+                raise UploadError(f"YouTube upload failed: {e}", cause=e) from e
 
         # Send notification
         if self._notifier:

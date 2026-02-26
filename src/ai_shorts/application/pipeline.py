@@ -113,9 +113,7 @@ class PipelineOrchestrator:
             log.info("📋 Topic: '%s' (%s)", topic.text, topic.language.display_name)
             return topic
 
-    def _generate_video(
-        self, topic_text: str, language: Language, mode: str
-    ) -> VideoOutput:
+    def _generate_video(self, topic_text: str, language: Language, mode: str) -> VideoOutput:
         """Generate a single video for one language.
 
         Args:
@@ -182,9 +180,7 @@ class PipelineOrchestrator:
         subtitle_asset = None
         try:
             with self._timer.step(f"Subtitle Generation ({language.display_name})"):
-                sub_uc = GenerateSubtitlesUseCase(
-                    self._container.subtitle_generator()
-                )
+                sub_uc = GenerateSubtitlesUseCase(self._container.subtitle_generator())
                 subtitle_asset = sub_uc.execute(audio_path, language, subtitle_path)
             free_gpu_memory()
         except Exception as e:

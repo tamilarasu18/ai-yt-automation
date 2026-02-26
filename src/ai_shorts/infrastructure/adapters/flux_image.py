@@ -44,9 +44,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
         self._inference_steps = settings.gpu.sdxl_inference_steps
 
     @retry_with_backoff(max_retries=2, base_delay=5.0)
-    def generate(
-        self, topic: str, language: Language, output_path: Path
-    ) -> VideoAsset:
+    def generate(self, topic: str, language: Language, output_path: Path) -> VideoAsset:
         """Generate a cinematic background image using local Stable Diffusion.
 
         Args:
@@ -65,8 +63,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
             from diffusers import StableDiffusionPipeline
         except ImportError as e:
             raise BackgroundGenerationError(
-                "diffusers/torch not installed. "
-                "Run: pip install 'ai-shorts[gpu]'",
+                "diffusers/torch not installed. Run: pip install 'ai-shorts[gpu]'",
                 cause=e,
             ) from e
 
@@ -146,8 +143,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
 
         prompt = self._build_prompt(topic, language)
         negative_prompt = (
-            "text, watermark, logo, blurry, low quality, ugly, "
-            "deformed, noisy, oversaturated"
+            "text, watermark, logo, blurry, low quality, ugly, deformed, noisy, oversaturated"
         )
 
         formats = {

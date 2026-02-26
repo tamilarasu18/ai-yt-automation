@@ -27,9 +27,7 @@ def create_app() -> Any:
         from fastapi import FastAPI, HTTPException
         from pydantic import BaseModel
     except ImportError as e:
-        raise ImportError(
-            "FastAPI not installed. Run: pip install fastapi uvicorn"
-        ) from e
+        raise ImportError("FastAPI not installed. Run: pip install fastapi uvicorn") from e
 
     app = FastAPI(
         title="AI YouTube Shorts Pipeline",
@@ -39,6 +37,7 @@ def create_app() -> Any:
 
     class GenerateRequest(BaseModel):
         """Request body for the /generate endpoint."""
+
         topic: str
         language: str = "en"
         mode: str = "full"
@@ -46,10 +45,12 @@ def create_app() -> Any:
 
     class BatchRequest(BaseModel):
         """Request body for the /batch endpoint."""
+
         topics: list[dict[str, str]]
 
     class GenerateResponse(BaseModel):
         """Response body for the /generate endpoint."""
+
         success: bool
         message: str = ""
         youtube_url: str = ""
@@ -138,11 +139,13 @@ def create_app() -> Any:
                     scheduled_time=item.get("scheduled_time", ""),
                 )
                 result = await generate(req)
-                results.append({
-                    "topic": topic,
-                    "success": result.success,
-                    "youtube_url": result.youtube_url,
-                })
+                results.append(
+                    {
+                        "topic": topic,
+                        "success": result.success,
+                        "youtube_url": result.youtube_url,
+                    }
+                )
             except Exception as e:
                 results.append({"topic": topic, "error": str(e)})
 

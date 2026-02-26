@@ -91,10 +91,12 @@ class Container:
             from ai_shorts.infrastructure.adapters.kokoro_tts import (
                 KokoroVoiceGenerator,
             )
+
             log.info("🔊 TTS engine: Kokoro (local)")
             return KokoroVoiceGenerator(self._settings)
 
         from ai_shorts.infrastructure.adapters.edge_tts import EdgeTTSVoiceGenerator
+
         log.info("🔊 TTS engine: Edge TTS (cloud)")
         return EdgeTTSVoiceGenerator(self._settings)
 
@@ -121,10 +123,12 @@ class Container:
             from ai_shorts.infrastructure.adapters.flux_image import (
                 StableDiffusionBackgroundGenerator,
             )
+
             log.info("🖼️  Image engine: Stable Diffusion (local GPU)")
             return StableDiffusionBackgroundGenerator(self._settings)
 
         from ai_shorts.infrastructure.adapters.sdxl import SDXLBackgroundGenerator
+
         log.info("🖼️  Image engine: SDXL (local GPU)")
         return SDXLBackgroundGenerator(self._settings)
 

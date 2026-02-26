@@ -36,8 +36,7 @@ class Language(str, Enum):
             if member.value == normalized:
                 return member
         raise ValueError(
-            f"Unsupported language '{value}'. "
-            f"Supported: {', '.join(m.value for m in cls)}"
+            f"Unsupported language '{value}'. Supported: {', '.join(m.value for m in cls)}"
         )
 
 
@@ -61,7 +60,7 @@ class VideoPrivacy(str, Enum):
 class VideoMode(str, Enum):
     """Video composition mode."""
 
-    AVATAR = "avatar"       # Talking-head with background
+    AVATAR = "avatar"  # Talking-head with background
     SLIDESHOW = "slideshow"  # Image-based with timed transitions
 
 

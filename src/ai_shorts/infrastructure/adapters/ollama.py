@@ -102,16 +102,18 @@ class OllamaLLMService(LLMService):
 
         model = model or self._default_model
         url = f"{self._host}/api/generate"
-        payload = json.dumps({
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.8,
-                "top_p": 0.9,
-                "num_predict": 500,
-            },
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.8,
+                    "top_p": 0.9,
+                    "num_predict": 500,
+                },
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             url, data=payload, headers={"Content-Type": "application/json"}
@@ -232,7 +234,7 @@ SCRIPT:"""
         """Clean up raw LLM output."""
         for prefix in ["SCRIPT:", "Here is", "Here's", "Sure", "Okay"]:
             if text.startswith(prefix):
-                text = text[len(prefix):].strip()
+                text = text[len(prefix) :].strip()
                 if text.startswith((",", ":", "!", ".")):
                     text = text[1:].strip()
 

@@ -72,9 +72,7 @@ class EdgeTTSVoiceGenerator(VoiceGenerator):
         try:
             self._run_async(_generate())
         except Exception as e:
-            raise VoiceGenerationError(
-                f"Edge TTS synthesis failed: {e}", cause=e
-            ) from e
+            raise VoiceGenerationError(f"Edge TTS synthesis failed: {e}", cause=e) from e
 
         duration = self._get_audio_duration(output_path)
         log.info("✅ Voice generated: %.1fs (%s, %s)", duration, language.value, voice_id)
@@ -106,9 +104,13 @@ class EdgeTTSVoiceGenerator(VoiceGenerator):
         """Get audio duration in seconds using ffprobe."""
         result = subprocess.run(
             [
-                "ffprobe", "-v", "quiet",
-                "-show_entries", "format=duration",
-                "-of", "csv=p=0",
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
                 str(path),
             ],
             capture_output=True,

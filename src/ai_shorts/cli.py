@@ -72,19 +72,28 @@ Examples:
     # Serve command (FastAPI)
     serve_parser = subparsers.add_parser("serve", help="Start the FastAPI REST API")
     serve_parser.add_argument(
-        "--port", type=int, default=8000, help="Server port (default: 8000)",
+        "--port",
+        type=int,
+        default=8000,
+        help="Server port (default: 8000)",
     )
     serve_parser.add_argument(
-        "--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)",
+        "--host",
+        default="0.0.0.0",
+        help="Server host (default: 0.0.0.0)",
     )
 
     # Batch command
     batch_parser = subparsers.add_parser("batch", help="Process topics from a JSON file")
     batch_parser.add_argument(
-        "--input", required=True, help="Path to JSON file with topics",
+        "--input",
+        required=True,
+        help="Path to JSON file with topics",
     )
     batch_parser.add_argument(
-        "--env-file", default=".env", help="Path to environment file",
+        "--env-file",
+        default=".env",
+        help="Path to environment file",
     )
 
     args = parser.parse_args(argv)
@@ -133,7 +142,9 @@ def _cmd_setup() -> int:
         table.add_column("Status", style="green")
 
         table.add_row("Google Sheet URL", "✅" if settings.google.sheet_url else "❌ Not set")
-        table.add_row("Service Account", "✅" if settings.google.service_account_file else "❌ Not set")
+        table.add_row(
+            "Service Account", "✅" if settings.google.service_account_file else "❌ Not set"
+        )
         table.add_row("YouTube OAuth", "✅" if settings.youtube.refresh_token else "❌ Not set")
         table.add_row("Telegram Bot", "✅" if settings.telegram.is_configured else "⚠️  Not set")
         table.add_row("Avatar Image", "✅" if settings.avatar_image_path else "❌ Not set")

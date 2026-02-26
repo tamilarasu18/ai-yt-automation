@@ -193,9 +193,7 @@ class AvatarAnimator(ABC):
     """
 
     @abstractmethod
-    def animate(
-        self, audio_path: Path, image_path: Path, output_path: Path
-    ) -> VideoAsset:
+    def animate(self, audio_path: Path, image_path: Path, output_path: Path) -> VideoAsset:
         """Generate a talking-head video from audio + still image.
 
         Args:
@@ -215,9 +213,7 @@ class SubtitleGenerator(ABC):
     """
 
     @abstractmethod
-    def transcribe(
-        self, audio_path: Path, language: Language, output_path: Path
-    ) -> VideoAsset:
+    def transcribe(self, audio_path: Path, language: Language, output_path: Path) -> VideoAsset:
         """Transcribe audio to SRT subtitle file.
 
         Args:
@@ -237,9 +233,7 @@ class BackgroundGenerator(ABC):
     """
 
     @abstractmethod
-    def generate(
-        self, topic: str, language: Language, output_path: Path
-    ) -> VideoAsset:
+    def generate(self, topic: str, language: Language, output_path: Path) -> VideoAsset:
         """Generate a cinematic background image.
 
         Args:
