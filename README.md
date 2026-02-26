@@ -23,38 +23,35 @@ _Story Generation → Voice Synthesis → Talking Avatar → Video Composition �
 flowchart TD
     A["📋 Google Sheet<br/>(Topic Queue)"] --> B["1️⃣ Fetch Topic"]
     B --> C["2️⃣ Generate Story<br/>(Ollama LLM)"]
-    C --> D{"Randomized<br/>Styles/Tones"}
-    D --> E["3️⃣ Generate Voice<br/>(Edge TTS / Kokoro)"]
-    E --> F["4️⃣ Animate Avatar<br/>(SadTalker)"]
-    F --> G{"Mode?"}
+    C --> D{"Randomized<br/>320 Combos"}
+    D --> E["3️⃣ Generate SEO<br/>(Title + Tags + Hashtags)"]
+    E --> F["4️⃣ Generate 5 Prompts<br/>(Ollama → scene descriptions)"]
+    F --> G["5️⃣ Generate 5 Images<br/>(Stable Diffusion)"]
+    G --> H["6️⃣ Generate Audio<br/>(Edge TTS / Kokoro)"]
+    H --> I["7️⃣ Animate Avatar<br/>(SadTalker)"]
+    I --> J["8️⃣ Generate Subtitles<br/>(Whisper STT)"]
+    J --> K["9️⃣ Compose Slideshow<br/>(MoviePy)"]
+    K --> L{"Features"}
 
-    G -->|"test"| H["✅ Test Complete<br/>(avatar.mp4)"]
-    G -->|"full"| I["5️⃣ Generate Metadata<br/>(SEO Title + Tags)"]
+    L --> L1["🎵 Background Music<br/>(looped @ 1% vol)"]
+    L --> L2["📝 Styled Subtitles<br/>(TextClip rendering)"]
+    L --> L3["🖼️ 5 Images + Avatar<br/>(crossfade + overlay)"]
 
-    I --> J["6️⃣ Generate Subtitles<br/>(Whisper STT)"]
-    J --> K["7️⃣ Generate Background<br/>(SDXL / Stable Diffusion)"]
-    K --> L["8️⃣ Compose Video<br/>(MoviePy)"]
-    L --> M{"Features"}
+    L1 --> M["🔟 Upload YouTube<br/>(resumable + scheduler)"]
+    L2 --> M
+    L3 --> M
 
-    M --> M1["🎵 Background Music<br/>(looped @ 1% vol)"]
-    M --> M2["📝 Styled Subtitles<br/>(TextClip rendering)"]
-    M --> M3["🖼️ Background<br/>(blurred + avatar overlay)"]
-
-    M1 --> N["9️⃣ Publish"]
-    M2 --> N
-    M3 --> N
-
-    N --> O["📺 YouTube Upload<br/>(resumable + scheduling)"]
-    N --> P["💾 Google Drive Backup"]
-    N --> Q["📱 Telegram Notification"]
+    M --> N["1️⃣1️⃣ Backup + Notify"]
+    N --> O["💾 Google Drive"]
+    N --> P["📱 Telegram"]
 
     style A fill:#4285F4,color:white
     style C fill:#EA4335,color:white
-    style E fill:#34A853,color:white
-    style F fill:#FBBC05,color:white
-    style K fill:#9C27B0,color:white
-    style L fill:#FF7043,color:white
-    style O fill:#FF0000,color:white
+    style G fill:#9C27B0,color:white
+    style H fill:#34A853,color:white
+    style I fill:#FBBC05,color:white
+    style K fill:#FF7043,color:white
+    style M fill:#FF0000,color:white
 ```
 
 ---
@@ -265,8 +262,8 @@ flowchart TD
 | **TTS**       | Edge TTS / Kokoro           | Voice synthesis (cloud or local, configurable) |
 | **Avatar**    | SadTalker + GFPGAN          | Talking-head video generation                  |
 | **STT**       | OpenAI Whisper              | Subtitle generation from audio                 |
-| **Image Gen** | SDXL / Stable Diffusion 2.1 | Cinematic background images (local GPU)        |
-| **Video**     | MoviePy + FFmpeg            | 9:16 composition + bgm + subtitles             |
+| **Image Gen** | SDXL / Stable Diffusion 2.1 | 5 scene images per video (local GPU)           |
+| **Video**     | MoviePy + FFmpeg            | Slideshow + avatar overlay + bgm + subtitles   |
 | **Queue**     | Google Sheets API           | Topic management                               |
 | **Upload**    | YouTube Data API v3         | Resumable upload with scheduling               |
 | **Notify**    | Telegram Bot API            | Pipeline notifications                         |
@@ -307,18 +304,18 @@ ai-youtube-automation-clean/
 │   │   └── exceptions.py          # 9 typed exceptions (one per pipeline stage)
 │   │
 │   ├── application/               # ⚙️ Use cases + orchestrator
-│   │   ├── use_cases.py           # 6 use cases (GenerateStory, GenerateVoice, etc.)
-│   │   └── pipeline.py            # PipelineOrchestrator (9-step sequencing)
+│   │   ├── use_cases.py           # 7 use cases (GenerateStory, GenerateSceneImages, etc.)
+│   │   └── pipeline.py            # PipelineOrchestrator (11-step sequencing)
 │   │
 │   ├── infrastructure/adapters/   # 🔧 External service implementations
-│   │   ├── ollama.py              # LLM (story + metadata + image prompts)
+│   │   ├── ollama.py              # LLM (story + metadata + 5 scene prompts)
 │   │   ├── edge_tts.py            # Cloud TTS (Microsoft Edge)
 │   │   ├── kokoro_tts.py          # Local TTS (CPU-friendly)
 │   │   ├── sadtalker.py           # Avatar animation (talking head)
 │   │   ├── whisper.py             # Speech-to-text subtitles
 │   │   ├── sdxl.py                # SDXL image gen (local GPU)
-│   │   ├── flux_image.py          # SD 2.1 image gen (local GPU)
-│   │   ├── moviepy_composer.py    # Video composition + bgm + subtitles
+│   │   ├── flux_image.py          # SD 2.1 + SceneImageGenerator (local GPU)
+│   │   ├── moviepy_composer.py    # Slideshow + avatar overlay + bgm + subtitles
 │   │   ├── youtube.py             # YouTube upload + scheduling
 │   │   ├── google_sheets.py       # Topic queue (Google Sheets)
 │   │   ├── google_drive.py        # Cloud backup
@@ -337,6 +334,7 @@ ai-youtube-automation-clean/
 │   │
 │   └── cli.py                     # CLI (run, setup, serve, batch)
 │
+├── assets/images/avatar.png       # Default avatar image
 ├── tests/                         # 31 unit tests
 ├── docs/                          # Architecture docs + setup guide
 ├── .github/workflows/ci.yml       # GitHub Actions CI
