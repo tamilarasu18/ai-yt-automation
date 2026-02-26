@@ -1,0 +1,129 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-shorts"
+version = "2.0.0"
+description = "Production-grade AI pipeline that auto-generates and publishes motivational YouTube Shorts using Clean Architecture principles."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Tamilarasu", email = "tamilarasu@example.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+keywords = ["ai", "youtube-shorts", "automation", "sadtalker", "tts", "clean-architecture"]
+
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "rich>=13.0",
+    "gspread>=6.0.0",
+    "google-auth>=2.28.0",
+    "google-auth-oauthlib>=1.2.0",
+    "google-api-python-client>=2.130.0",
+    "edge-tts>=6.1.0",
+    "nest-asyncio>=1.5.0",
+    "moviepy==1.0.3",
+    "Pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "torch>=2.1.0",
+    "torchaudio>=2.1.0",
+    "openai-whisper>=20231117",
+    "diffusers>=0.27.0",
+    "transformers>=4.38.0",
+    "accelerate>=0.27.0",
+    "safetensors>=0.4.0",
+    "kornia",
+    "facexlib",
+    "gfpgan",
+    "basicsr",
+    "dlib",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.4.0",
+    "mypy>=1.8",
+]
+api = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+]
+kokoro = [
+    "kokoro",
+    "soundfile>=0.12.0",
+    "numpy>=1.24.0",
+]
+all = ["ai-shorts[gpu,dev,api,kokoro]"]
+
+[project.scripts]
+ai-shorts = "ai_shorts.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/tamilarasu/ai-youtube-automation"
+Documentation = "https://github.com/tamilarasu/ai-youtube-automation/tree/main/docs"
+Repository = "https://github.com/tamilarasu/ai-youtube-automation"
+Issues = "https://github.com/tamilarasu/ai-youtube-automation/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "gpu: marks tests requiring GPU (deselect with '-m \"not gpu\"')",
+    "integration: marks integration tests",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific rules
+]
+ignore = ["E501", "RUF001", "RUF002", "RUF005", "RUF012", "B019"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/ai_shorts/core/container.py" = ["F401"]
+"src/ai_shorts/presentation/api.py" = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ai_shorts"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true

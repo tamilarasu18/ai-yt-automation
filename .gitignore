@@ -1,0 +1,87 @@
+# ══════════════════════════════════════════
+# Python
+# ══════════════════════════════════════════
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+*.whl
+
+# ══════════════════════════════════════════
+# Virtual Environment
+# ══════════════════════════════════════════
+.env
+.env.local
+.env.production
+.venv/
+venv/
+env/
+
+# ══════════════════════════════════════════
+# Secrets — NEVER commit
+# ══════════════════════════════════════════
+config.json
+service_account.json
+client_secret*.json
+*.pem
+*.key
+token.json
+
+# ══════════════════════════════════════════
+# Model Weights
+# ══════════════════════════════════════════
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+models/
+checkpoints/
+
+# ══════════════════════════════════════════
+# Output / Generated Files
+# ══════════════════════════════════════════
+output/
+*.mp4
+*.wav
+*.mp3
+*.srt
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# ══════════════════════════════════════════
+# IDE / OS
+# ══════════════════════════════════════════
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+.DS_Store
+
+# ══════════════════════════════════════════
+# Testing / Coverage
+# ══════════════════════════════════════════
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ══════════════════════════════════════════
+# Colab / Jupyter
+# ══════════════════════════════════════════
+.ipynb_checkpoints/
+*.ipynb
+
+# ══════════════════════════════════════════
+# SadTalker (cloned at runtime)
+# ══════════════════════════════════════════
+SadTalker/
