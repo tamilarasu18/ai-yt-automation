@@ -6,6 +6,8 @@
 
 _Story Generation → Voice Synthesis → Talking Avatar → Video Composition → Auto Upload_
 
+**🆓 100% Free** — No API keys needed for image generation. Runs on Google Colab Free (T4 GPU).
+
 [![CI](https://github.com/tamilarasu/ai-youtube-automation/actions/workflows/ci.yml/badge.svg)](https://github.com/tamilarasu/ai-youtube-automation/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
 [![Architecture](https://img.shields.io/badge/architecture-Clean%20%2F%20Hexagonal-blueviolet)](docs/architecture.md)
@@ -256,24 +258,24 @@ flowchart TD
 
 ## ⚡ Tech Stack
 
-| Layer         | Technology                  | Purpose                                        |
-| ------------- | --------------------------- | ---------------------------------------------- |
-| **LLM**       | Ollama (Gemma 3 12B)        | Story generation, SEO metadata, image prompts  |
-| **TTS**       | Edge TTS / Kokoro           | Voice synthesis (cloud or local, configurable) |
-| **Avatar**    | SadTalker + GFPGAN          | Talking-head video generation                  |
-| **STT**       | OpenAI Whisper              | Subtitle generation from audio                 |
-| **Image Gen** | SDXL / Stable Diffusion 2.1 | 5 scene images per video (local GPU)           |
-| **Video**     | MoviePy + FFmpeg            | Slideshow + avatar overlay + bgm + subtitles   |
-| **Queue**     | Google Sheets API           | Topic management                               |
-| **Upload**    | YouTube Data API v3         | Resumable upload with scheduling               |
-| **Notify**    | Telegram Bot API            | Pipeline notifications                         |
-| **Storage**   | Google Drive API            | Video backup                                   |
-| **Config**    | Pydantic Settings           | Type-safe .env loading                         |
-| **API**       | FastAPI + Uvicorn           | REST API for remote triggering                 |
-| **DI**        | Custom Container            | Config-driven adapter selection                |
-| **CI/CD**     | GitHub Actions              | Lint (Ruff) + Tests (Pytest)                   |
+| Layer         | Technology            | Purpose                                        |
+| ------------- | --------------------- | ---------------------------------------------- |
+| **LLM**       | Ollama (Gemma 3 12B)  | Story generation, SEO metadata, image prompts  |
+| **TTS**       | Edge TTS / Kokoro     | Voice synthesis (cloud or local, configurable) |
+| **Avatar**    | SadTalker + GFPGAN    | Talking-head video generation                  |
+| **STT**       | OpenAI Whisper        | Subtitle generation from audio                 |
+| **Image Gen** | Stable Diffusion v1.4 | 5 scene images per video (local GPU, no auth)  |
+| **Video**     | MoviePy + FFmpeg      | Slideshow + avatar overlay + bgm + subtitles   |
+| **Queue**     | Google Sheets API     | Topic management                               |
+| **Upload**    | YouTube Data API v3   | Resumable upload with scheduling               |
+| **Notify**    | Telegram Bot API      | Pipeline notifications                         |
+| **Storage**   | Google Drive API      | Video backup                                   |
+| **Config**    | Pydantic Settings     | Type-safe .env loading                         |
+| **API**       | FastAPI + Uvicorn     | REST API for remote triggering                 |
+| **DI**        | Custom Container      | Config-driven adapter selection                |
+| **CI/CD**     | GitHub Actions        | Lint (Ruff) + Tests (Pytest)                   |
 
-> **Total cost: $0** — All components are free-tier or open-source. No external API keys required.
+> **Total cost: $0** — All components are free-tier or open-source. No API keys or tokens needed for image generation.
 
 ---
 
@@ -314,7 +316,7 @@ ai-youtube-automation-clean/
 │   │   ├── sadtalker.py           # Avatar animation (talking head)
 │   │   ├── whisper.py             # Speech-to-text subtitles
 │   │   ├── sdxl.py                # SDXL image gen (local GPU)
-│   │   ├── flux_image.py          # SD 2.1 + SceneImageGenerator (local GPU)
+│   │   ├── flux_image.py          # SD v1.4 + SceneImageGenerator (local GPU, no auth)
 │   │   ├── moviepy_composer.py    # Slideshow + avatar overlay + bgm + subtitles
 │   │   ├── youtube.py             # YouTube upload + scheduling
 │   │   ├── google_sheets.py       # Topic queue (Google Sheets)
@@ -334,6 +336,7 @@ ai-youtube-automation-clean/
 │   │
 │   └── cli.py                     # CLI (run, setup, serve, batch)
 │
+├── colab_quickstart.ipynb         # 🚀 Google Colab notebook (1-click run)
 ├── assets/images/avatar.png       # Default avatar image
 ├── tests/                         # 31 unit tests
 ├── docs/                          # Architecture docs + setup guide
@@ -348,8 +351,8 @@ ai-youtube-automation-clean/
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/tamilarasu/ai-youtube-automation.git
-cd ai-youtube-automation
+git clone https://github.com/tamilarasu18/ai-yt-automation.git
+cd ai-yt-automation
 
 # Create virtual environment
 python -m venv .venv
@@ -397,6 +400,40 @@ ai-shorts batch --input topics.json         # Process topics from JSON file
 
 ---
 
+## ☁️ Google Colab (Recommended)
+
+Run the full pipeline on **Google Colab Free** with T4 GPU — no local setup needed!
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tamilarasu18/ai-yt-automation/blob/main/colab_quickstart.ipynb)
+
+### Colab Features
+
+| Feature              | Details                                            |
+| -------------------- | -------------------------------------------------- |
+| **1-Click Run**      | Open notebook → Runtime → Run all → done           |
+| **T4 GPU Optimized** | Whisper `base`, 20 inference steps, 512×912 images |
+| **Smart Caching**    | Models cached to Google Drive (~6 GB)              |
+| **First Run**        | ~15 min (downloads models)                         |
+| **Future Runs**      | ~5 min (restores from Drive)                       |
+| **Zero Auth**        | SD v1.4 downloads without HuggingFace tokens       |
+
+### Drive Structure
+
+```
+MyDrive/ai-youtube-automation/
+├── config.json              ← Your settings
+├── service_account.json     ← Google Sheets auth
+├── client_secret.json       ← YouTube OAuth
+├── models/                  ← Auto-cached (~6 GB)
+│   ├── ollama/              ← Gemma 3 4B
+│   ├── sadtalker/           ← SadTalker checkpoints
+│   ├── gfpgan/              ← Face enhancement
+│   └── huggingface/         ← Stable Diffusion v1.4
+└── videos/                  ← Output videos
+```
+
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -427,12 +464,12 @@ ruff format --check src/    # Format check
 | 3   | **Styled subtitles**        | MoviePy TextClip with stroke, word-wrapping                 |
 | 4   | **Scheduled upload**        | YouTube `publishAt` with auto privacy management            |
 | 5   | **Kokoro TTS**              | Local CPU-friendly TTS, 100-word chunking                   |
-| 6   | **Stable Diffusion**        | Local GPU image gen (SD 2.1, no API keys needed)            |
-| 7   | **Image prompt gen**        | LLM summarizes story → image prompt                         |
+| 6   | **Stable Diffusion**        | Local GPU image gen (SD v1.4, zero auth needed)             |
+| 7   | **Image prompt gen**        | LLM generates 5 scene-specific prompts per story            |
 | 8   | **FastAPI REST API**        | Remote pipeline triggering via HTTP                         |
 | 9   | **Batch processing**        | JSON file → sequential pipeline runs                        |
-| 10  | **Scene segments**          | Per-segment image generation domain model                   |
-| 11  | **Slideshow mode**          | Image-based video without avatar                            |
+| 10  | **Scene slideshow**         | 5 scene images + avatar overlay + crossfade transitions     |
+| 11  | **Google Colab**            | 1-click notebook with T4 GPU optimization + Drive caching   |
 | 12  | **Resumable upload**        | Chunked YouTube upload with progress %                      |
 
 ---
