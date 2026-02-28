@@ -137,16 +137,16 @@ class PipelineOrchestrator:
         Returns:
             VideoOutput with paths and metadata.
         """
+        from concurrent.futures import Future, ThreadPoolExecutor
+
         from ai_shorts.application.use_cases import (
             CreateAvatarVideoUseCase,
             GenerateMetadataUseCase,
-            GenerateSceneImagesUseCase,
             GenerateStoryUseCase,
             GenerateSubtitlesUseCase,
             GenerateVoiceUseCase,
             PublishVideoUseCase,
         )
-        from concurrent.futures import ThreadPoolExecutor, Future
 
         output_dir = self._settings.output_dir / language.value
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -175,27 +175,30 @@ class PipelineOrchestrator:
         scene_dir = output_dir / "scenes"
         audio_path = output_dir / "voice.wav"
 
-        def _generate_voice() -> Voice:
+        def _generate_voice():
             voice_uc = GenerateVoiceUseCase(self._container.voice_generator())
             return voice_uc.execute(story.text, language, audio_path)
 
-        with self._timer.step(f"Scene Images + Voice (parallel)"):
+        with (
+            self._timer.step("Scene Images + Voice (parallel)"),
+            ThreadPoolExecutor(max_workers=1) as executor,
+        ):
             # Start TTS in a background thread
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                voice_future: Future = executor.submit(_generate_voice)
+            voice_future: Future = executor.submit(_generate_voice)
 
-                # Generate images on the main thread (uses GPU)
-                from ai_shorts.domain.entities import SceneSegment
-                segments = [
-                    SceneSegment(start=0.0, end=0.0, image_number=i + 1, prompt=p)
-                    for i, p in enumerate(prompts)
-                ]
-                scene_gen = self._container.scene_image_generator()
-                scene_assets = scene_gen.generate_scenes(segments, scene_dir)
-                scene_images = [asset.path for asset in scene_assets]
+            # Generate images on the main thread (uses GPU)
+            from ai_shorts.domain.entities import SceneSegment
 
-                # Wait for TTS to complete
-                voice = voice_future.result()
+            segments = [
+                SceneSegment(start=0.0, end=0.0, image_number=i + 1, prompt=p)
+                for i, p in enumerate(prompts)
+            ]
+            scene_gen = self._container.scene_image_generator()
+            scene_assets = scene_gen.generate_scenes(segments, scene_dir)
+            scene_images = [asset.path for asset in scene_assets]
+
+            # Wait for TTS to complete
+            voice = voice_future.result()
 
         free_gpu_memory()
 

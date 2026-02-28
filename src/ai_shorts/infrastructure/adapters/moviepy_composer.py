@@ -269,9 +269,8 @@ class MoviePyVideoComposer(VideoComposer):
             # Load avatar video and create circular overlay
             avatar_clip = VideoFileClip(str(avatar_video))
             avatar_size = int(self._width * 0.25)  # 25% of video width
-            avatar_resized = (
-                avatar_clip.subclip(0, min(avatar_clip.duration, duration))
-                .resize((avatar_size, avatar_size))
+            avatar_resized = avatar_clip.subclip(0, min(avatar_clip.duration, duration)).resize(
+                (avatar_size, avatar_size)
             )
             avatar_masked = self._apply_circular_mask(avatar_resized)
             avatar_overlay = avatar_masked.set_position(
@@ -426,9 +425,9 @@ class MoviePyVideoComposer(VideoComposer):
         size = min(w, h)
 
         # Create circular mask array (anti-aliased)
-        Y, X = np.ogrid[:h, :w]
+        y_grid, x_grid = np.ogrid[:h, :w]
         center_x, center_y = w / 2, h / 2
-        dist = np.sqrt((X - center_x) ** 2 + (Y - center_y) ** 2)
+        dist = np.sqrt((x_grid - center_x) ** 2 + (y_grid - center_y) ** 2)
         radius = size / 2
 
         # Anti-aliased edge with 2px feather

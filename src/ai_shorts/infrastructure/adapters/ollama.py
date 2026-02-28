@@ -350,8 +350,16 @@ class OllamaImagePromptGenerator(ImagePromptGenerator):
         """Parse numbered prompts from LLM output."""
         # Lines that indicate LLM meta-response (not actual prompts)
         skip_prefixes = (
-            "here are", "here is", "sure", "of course", "certainly",
-            "based on", "the following", "i'll", "let me", "below are",
+            "here are",
+            "here is",
+            "sure",
+            "of course",
+            "certainly",
+            "based on",
+            "the following",
+            "i'll",
+            "let me",
+            "below are",
         )
 
         lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]

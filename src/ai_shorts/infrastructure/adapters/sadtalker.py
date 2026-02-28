@@ -106,9 +106,18 @@ class SadTalkerAnimator(AvatarAnimator):
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=self._sadtalker_dir)
 
         if result.returncode != 0:
-            log.warning("⚠️  SadTalker failed (exit code %d), attempting Ken Burns fallback...", result.returncode)
-            log.warning("STDOUT (last 1000 chars): %s", result.stdout[-1000:] if result.stdout else "(empty)")
-            log.warning("STDERR (last 1000 chars): %s", result.stderr[-1000:] if result.stderr else "(empty)")
+            log.warning(
+                "⚠️  SadTalker failed (exit code %d), attempting Ken Burns fallback...",
+                result.returncode,
+            )
+            log.warning(
+                "STDOUT (last 1000 chars): %s",
+                result.stdout[-1000:] if result.stdout else "(empty)",
+            )
+            log.warning(
+                "STDERR (last 1000 chars): %s",
+                result.stderr[-1000:] if result.stderr else "(empty)",
+            )
             return self._ken_burns_fallback(audio_path, image_path, output_path)
 
         # Find the generated video
@@ -201,7 +210,7 @@ class SadTalkerAnimator(AvatarAnimator):
         log.info("🔧 Patching numpy 2.0 compatibility in SadTalker source...")
         patched_count = 0
 
-        for root, dirs, files in os.walk(self._sadtalker_dir):
+        for root, _dirs, files in os.walk(self._sadtalker_dir):
             # Skip .git directory
             if ".git" in root:
                 continue
@@ -210,7 +219,7 @@ class SadTalkerAnimator(AvatarAnimator):
                     continue
                 fpath = os.path.join(root, fname)
                 try:
-                    with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(fpath, encoding="utf-8", errors="ignore") as f:
                         content = f.read()
                     original = content
 
@@ -237,9 +246,7 @@ class SadTalkerAnimator(AvatarAnimator):
                     content = re.sub(r"np\.str([^_a-zA-Z0-9])", r"str\1", content)
 
                     # np.VisibleDeprecationWarning → DeprecationWarning
-                    content = content.replace(
-                        "np.VisibleDeprecationWarning", "DeprecationWarning"
-                    )
+                    content = content.replace("np.VisibleDeprecationWarning", "DeprecationWarning")
 
                     if content != original:
                         with open(fpath, "w", encoding="utf-8") as f:
@@ -271,7 +278,7 @@ class SadTalkerAnimator(AvatarAnimator):
             if not os.path.exists(patch_file):
                 continue
             try:
-                with open(patch_file, "r", encoding="utf-8") as f:
+                with open(patch_file, encoding="utf-8") as f:
                     content = f.read()
                 original = content
                 content = content.replace(
@@ -301,7 +308,7 @@ class SadTalkerAnimator(AvatarAnimator):
             return
 
         try:
-            with open(preprocess_file, "r", encoding="utf-8") as f:
+            with open(preprocess_file, encoding="utf-8") as f:
                 content = f.read()
 
             old = "trans_params = np.array([w0, h0, s, t[0], t[1]])"
@@ -337,7 +344,10 @@ class SadTalkerAnimator(AvatarAnimator):
         if result.returncode == 0:
             log.info("✅ SadTalker checkpoints downloaded")
         else:
-            log.warning("⚠️  Checkpoint download may have failed: %s", result.stderr[-300:] if result.stderr else "")
+            log.warning(
+                "⚠️  Checkpoint download may have failed: %s",
+                result.stderr[-300:] if result.stderr else "",
+            )
 
     @staticmethod
     def _ensure_dependencies() -> None:

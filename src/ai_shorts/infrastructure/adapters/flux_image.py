@@ -49,6 +49,7 @@ def _load_pipeline(model_id: str, torch_dtype):
     """
     if _is_sdxl(model_id):
         from diffusers import StableDiffusionXLPipeline
+
         return StableDiffusionXLPipeline.from_pretrained(
             model_id,
             torch_dtype=torch_dtype,
@@ -57,6 +58,7 @@ def _load_pipeline(model_id: str, torch_dtype):
         )
     else:
         from diffusers import StableDiffusionPipeline
+
         return StableDiffusionPipeline.from_pretrained(
             model_id,
             torch_dtype=torch_dtype,
