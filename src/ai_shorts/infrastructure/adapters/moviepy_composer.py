@@ -118,8 +118,9 @@ class MoviePyVideoComposer(VideoComposer):
                 .resize((self._width, self._height))
             )
 
-            # Center the avatar on the background
+            # Center the avatar on the background with circular mask
             avatar_resized = avatar_clip.resize(width=int(self._width * 0.8))
+            avatar_resized = self._apply_circular_mask(avatar_resized)
             avatar_positioned = avatar_resized.set_position("center")
 
             # Build clip layers
@@ -268,14 +269,15 @@ class MoviePyVideoComposer(VideoComposer):
             # Load avatar video and create circular overlay
             avatar_clip = VideoFileClip(str(avatar_video))
             avatar_size = int(self._width * 0.25)  # 25% of video width
-            avatar_overlay = (
+            avatar_resized = (
                 avatar_clip.subclip(0, min(avatar_clip.duration, duration))
                 .resize((avatar_size, avatar_size))
-                .set_position(
-                    (
-                        self._width - avatar_size - 30,  # right margin
-                        self._height - avatar_size - 180,  # above subtitles
-                    )
+            )
+            avatar_masked = self._apply_circular_mask(avatar_resized)
+            avatar_overlay = avatar_masked.set_position(
+                (
+                    self._width - avatar_size - 30,  # right margin
+                    self._height - avatar_size - 180,  # above subtitles
                 )
             )
 
@@ -393,7 +395,7 @@ class MoviePyVideoComposer(VideoComposer):
                         size=(video_size[0] - 100, None),
                         align="center",
                     )
-                    .set_position("center")
+                    .set_position(("center", self._height - 160))
                     .set_start(sub["start"])
                     .set_duration(sub["end"] - sub["start"])
                 )
@@ -404,6 +406,36 @@ class MoviePyVideoComposer(VideoComposer):
 
         log.info("📝 Created %d styled subtitle clips", len(clips))
         return clips
+
+    def _apply_circular_mask(self, clip):
+        """Apply a circular mask with anti-aliased edges to a video/image clip.
+
+        Creates a smooth circular cutout with a 2px feathered edge for
+        a polished, professional avatar appearance.
+
+        Args:
+            clip: A MoviePy clip (VideoFileClip or ImageClip).
+
+        Returns:
+            The clip with a circular mask applied.
+        """
+        import numpy as np
+        from moviepy.editor import ImageClip
+
+        w, h = clip.size
+        size = min(w, h)
+
+        # Create circular mask array (anti-aliased)
+        Y, X = np.ogrid[:h, :w]
+        center_x, center_y = w / 2, h / 2
+        dist = np.sqrt((X - center_x) ** 2 + (Y - center_y) ** 2)
+        radius = size / 2
+
+        # Anti-aliased edge with 2px feather
+        mask = np.clip(radius - dist, 0, 2) / 2
+        mask_clip = ImageClip(mask, ismask=True).set_duration(clip.duration)
+
+        return clip.set_mask(mask_clip)
 
     @staticmethod
     def _word_wrap(text: str, max_length: int) -> str:
