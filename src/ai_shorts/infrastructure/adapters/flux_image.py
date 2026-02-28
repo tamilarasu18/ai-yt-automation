@@ -36,6 +36,35 @@ def _is_turbo(model_id: str) -> bool:
     return model_id in TURBO_MODELS or "turbo" in model_id.lower()
 
 
+def _is_sdxl(model_id: str) -> bool:
+    """Check if a model is an SDXL-based model."""
+    return "sdxl" in model_id.lower()
+
+
+def _load_pipeline(model_id: str, torch_dtype):
+    """Load the correct diffusers pipeline for the model.
+
+    Uses specific pipeline classes instead of AutoPipelineForText2Image
+    to avoid transitive import errors (e.g., MT5Tokenizer from HunyuanDiT).
+    """
+    if _is_sdxl(model_id):
+        from diffusers import StableDiffusionXLPipeline
+        return StableDiffusionXLPipeline.from_pretrained(
+            model_id,
+            torch_dtype=torch_dtype,
+            safety_checker=None,
+            token=False,
+        )
+    else:
+        from diffusers import StableDiffusionPipeline
+        return StableDiffusionPipeline.from_pretrained(
+            model_id,
+            torch_dtype=torch_dtype,
+            safety_checker=None,
+            token=False,
+        )
+
+
 class StableDiffusionBackgroundGenerator(BackgroundGenerator):
     """Local Stable Diffusion image generation via diffusers.
 
@@ -59,7 +88,6 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
         """Generate a cinematic background image using local Stable Diffusion."""
         try:
             import torch
-            from diffusers import AutoPipelineForText2Image
         except ImportError as e:
             raise BackgroundGenerationError(
                 "diffusers/torch not installed. Run: pip install 'ai-shorts[gpu]'",
@@ -85,13 +113,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
         log.info("   Prompt: %s", prompt[:120])
 
         try:
-            pipe = AutoPipelineForText2Image.from_pretrained(
-                self._model_id,
-                torch_dtype=torch.float16,
-                variant="fp16" if not turbo else None,
-                safety_checker=None,
-                token=False,
-            )
+            pipe = _load_pipeline(self._model_id, torch_dtype=torch.float16)
             pipe.enable_model_cpu_offload()
 
             gen_kwargs = {
@@ -137,7 +159,6 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
         """Generate both landscape and portrait images."""
         try:
             import torch
-            from diffusers import AutoPipelineForText2Image
         except ImportError:
             return {}
 
@@ -147,11 +168,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
         results: dict[str, VideoAsset] = {}
 
         try:
-            pipe = AutoPipelineForText2Image.from_pretrained(
-                self._model_id,
-                torch_dtype=torch.float16,
-                safety_checker=None,
-            )
+            pipe = _load_pipeline(self._model_id, torch_dtype=torch.float16)
             pipe.enable_model_cpu_offload()
 
             for orientation, (w, h) in formats.items():
@@ -228,7 +245,6 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
         """Generate one image per scene segment."""
         try:
             import torch
-            from diffusers import AutoPipelineForText2Image
         except ImportError as e:
             raise BackgroundGenerationError(
                 "diffusers/torch not installed. Run: pip install 'ai-shorts[gpu]'",
@@ -251,13 +267,7 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
         assets: list[VideoAsset] = []
 
         try:
-            pipe = AutoPipelineForText2Image.from_pretrained(
-                self._model_id,
-                torch_dtype=torch.float16,
-                variant="fp16" if not turbo else None,
-                safety_checker=None,
-                token=False,
-            )
+            pipe = _load_pipeline(self._model_id, torch_dtype=torch.float16)
             pipe.enable_model_cpu_offload()
 
             for i, segment in enumerate(segments):
