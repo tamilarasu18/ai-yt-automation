@@ -52,7 +52,7 @@ def _load_pipeline(model_id: str, torch_dtype):
         return StableDiffusionXLPipeline.from_pretrained(
             model_id,
             torch_dtype=torch_dtype,
-            safety_checker=None,
+            variant="fp16",
             token=False,
         )
     else:
@@ -60,6 +60,7 @@ def _load_pipeline(model_id: str, torch_dtype):
         return StableDiffusionPipeline.from_pretrained(
             model_id,
             torch_dtype=torch_dtype,
+            variant="fp16",
             safety_checker=None,
             token=False,
         )

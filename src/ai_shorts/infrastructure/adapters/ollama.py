@@ -348,12 +348,21 @@ class OllamaImagePromptGenerator(ImagePromptGenerator):
     @staticmethod
     def _parse_prompts(raw: str, expected: int) -> list[str]:
         """Parse numbered prompts from LLM output."""
+        # Lines that indicate LLM meta-response (not actual prompts)
+        skip_prefixes = (
+            "here are", "here is", "sure", "of course", "certainly",
+            "based on", "the following", "i'll", "let me", "below are",
+        )
+
         lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
         prompts = []
         for line in lines:
             # Remove numbering like "1.", "1)", "1:", etc.
             cleaned = re.sub(r"^\d+[\.\)\:\-]\s*", "", line).strip()
             cleaned = cleaned.strip('"').strip("'")
+            # Skip meta-response lines
+            if cleaned.lower().startswith(skip_prefixes):
+                continue
             if cleaned and len(cleaned) > 10:
                 prompts.append(cleaned)
 
