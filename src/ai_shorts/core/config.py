@@ -133,7 +133,7 @@ class Settings(BaseSettings):
     gpu: GPUConfig = Field(default_factory=GPUConfig)
 
     # API tokens
-    sd_model: str = "stabilityai/sdxl-turbo"
+    sd_model: str = "stabilityai/sd-turbo"
     image_style: str = "anime illustration"
 
     # Pipeline

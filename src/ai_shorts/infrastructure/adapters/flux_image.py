@@ -24,8 +24,8 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Default model — SDXL Turbo (fast + high quality)
-DEFAULT_SD_MODEL = "stabilityai/sdxl-turbo"
+# Default model — SD Turbo (fast + lightweight, fits 15GB free Drive)
+DEFAULT_SD_MODEL = "stabilityai/sd-turbo"
 
 # Models that use the Turbo pipeline (few-step, no guidance)
 TURBO_MODELS = {"stabilityai/sdxl-turbo", "stabilityai/sd-turbo"}
