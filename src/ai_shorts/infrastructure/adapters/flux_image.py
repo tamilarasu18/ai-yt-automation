@@ -3,6 +3,7 @@ Stable Diffusion Adapter — BackgroundGenerator + SceneImageGenerator.
 
 Uses local Stable Diffusion models via the diffusers library.
 Generates single backgrounds and multi-scene images for slideshow videos.
+Supports SDXL Turbo for fast, high-quality generation.
 """
 
 from __future__ import annotations
@@ -23,8 +24,16 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Default lightweight SD model (good balance of speed + quality)
-DEFAULT_SD_MODEL = "stabilityai/stable-diffusion-2-1"
+# Default model — SDXL Turbo (fast + high quality)
+DEFAULT_SD_MODEL = "stabilityai/sdxl-turbo"
+
+# Models that use the Turbo pipeline (few-step, no guidance)
+TURBO_MODELS = {"stabilityai/sdxl-turbo", "stabilityai/sd-turbo"}
+
+
+def _is_turbo(model_id: str) -> bool:
+    """Check if a model is a Turbo distilled model."""
+    return model_id in TURBO_MODELS or "turbo" in model_id.lower()
 
 
 class StableDiffusionBackgroundGenerator(BackgroundGenerator):
@@ -33,33 +42,24 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
     Features:
     - Fully local — no API keys, no cloud dependency
     - GPU accelerated with CPU offload for low-VRAM cards
-    - Dual-orientation: landscape (1280x720) + portrait (720x1280)
+    - Supports SDXL Turbo for fast generation (4 steps)
     - Cultural style prompts per language
     - Automatic retry with exponential backoff
     """
 
     def __init__(self, settings: Settings) -> None:
         self._model_id = getattr(settings, "sd_model", "") or DEFAULT_SD_MODEL
-        self._inference_steps = settings.gpu.sdxl_inference_steps
+        self._image_style = getattr(settings, "image_style", "anime illustration")
+        self._inference_steps = (
+            4 if _is_turbo(self._model_id) else settings.gpu.sdxl_inference_steps
+        )
 
     @retry_with_backoff(max_retries=2, base_delay=5.0)
     def generate(self, topic: str, language: Language, output_path: Path) -> VideoAsset:
-        """Generate a cinematic background image using local Stable Diffusion.
-
-        Args:
-            topic: Image prompt or topic.
-            language: Content language (affects cultural style).
-            output_path: Where to save the image.
-
-        Returns:
-            VideoAsset for the generated image.
-
-        Raises:
-            BackgroundGenerationError: If generation fails.
-        """
+        """Generate a cinematic background image using local Stable Diffusion."""
         try:
             import torch
-            from diffusers import StableDiffusionPipeline
+            from diffusers import AutoPipelineForText2Image
         except ImportError as e:
             raise BackgroundGenerationError(
                 "diffusers/torch not installed. Run: pip install 'ai-shorts[gpu]'",
@@ -69,36 +69,45 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
         prompt = self._build_prompt(topic, language)
         negative_prompt = (
             "text, watermark, logo, blurry, low quality, ugly, "
-            "deformed, noisy, oversaturated, cartoon, anime"
+            "deformed, noisy, oversaturated, extra fingers, bad anatomy"
         )
 
-        # Portrait for YouTube Shorts (512x912 fits T4 15GB VRAM)
+        # Portrait for YouTube Shorts
         width, height = 512, 912  # ~9:16 ratio, upscaled by MoviePy
+        turbo = _is_turbo(self._model_id)
 
         log.info(
-            "🖼️  Generating SD image (%s, %d steps)...",
+            "🖼️  Generating image (%s, %d steps%s)...",
             self._model_id.split("/")[-1],
             self._inference_steps,
+            ", turbo" if turbo else "",
         )
-        log.info("   Prompt: %s", prompt[:100])
+        log.info("   Prompt: %s", prompt[:120])
 
         try:
-            pipe = StableDiffusionPipeline.from_pretrained(
+            pipe = AutoPipelineForText2Image.from_pretrained(
                 self._model_id,
                 torch_dtype=torch.float16,
+                variant="fp16" if not turbo else None,
                 safety_checker=None,
-                token=False,  # No HuggingFace auth needed
+                token=False,
             )
             pipe.enable_model_cpu_offload()
 
-            image = pipe(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                num_inference_steps=self._inference_steps,
-                guidance_scale=7.5,
-                width=width,
-                height=height,
-            ).images[0]
+            gen_kwargs = {
+                "prompt": prompt,
+                "num_inference_steps": self._inference_steps,
+                "width": width,
+                "height": height,
+            }
+
+            if turbo:
+                gen_kwargs["guidance_scale"] = 0.0
+            else:
+                gen_kwargs["negative_prompt"] = negative_prompt
+                gen_kwargs["guidance_scale"] = 7.5
+
+            image = pipe(**gen_kwargs).images[0]
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             image.save(str(output_path))
@@ -106,7 +115,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
             del pipe
             free_gpu_memory()
 
-            log.info("✅ SD image saved: %s", output_path)
+            log.info("✅ Image saved: %s", output_path)
             return VideoAsset(
                 path=output_path,
                 asset_type=AssetType.BACKGROUND_IMAGE,
@@ -125,37 +134,20 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
     def generate_multi(
         self, topic: str, language: Language, output_dir: Path
     ) -> dict[str, VideoAsset]:
-        """Generate both landscape and portrait images.
-
-        Args:
-            topic: Image generation topic/prompt.
-            language: Content language.
-            output_dir: Directory to save images.
-
-        Returns:
-            Dict with 'landscape' and 'portrait' VideoAsset entries.
-        """
+        """Generate both landscape and portrait images."""
         try:
             import torch
-            from diffusers import StableDiffusionPipeline
+            from diffusers import AutoPipelineForText2Image
         except ImportError:
             return {}
 
         prompt = self._build_prompt(topic, language)
-        negative_prompt = (
-            "text, watermark, logo, blurry, low quality, ugly, deformed, noisy, oversaturated"
-        )
-
-        formats = {
-            "landscape": (1280, 720),
-            "portrait": (720, 1280),
-        }
-
+        turbo = _is_turbo(self._model_id)
+        formats = {"landscape": (1280, 720), "portrait": (720, 1280)}
         results: dict[str, VideoAsset] = {}
 
         try:
-            log.info("🖼️  Loading SD model: %s", self._model_id)
-            pipe = StableDiffusionPipeline.from_pretrained(
+            pipe = AutoPipelineForText2Image.from_pretrained(
                 self._model_id,
                 torch_dtype=torch.float16,
                 safety_checker=None,
@@ -165,15 +157,18 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
             for orientation, (w, h) in formats.items():
                 log.info("   Generating %s (%dx%d)...", orientation, w, h)
 
-                image = pipe(
-                    prompt=prompt,
-                    negative_prompt=negative_prompt,
-                    num_inference_steps=self._inference_steps,
-                    guidance_scale=7.5,
-                    width=w,
-                    height=h,
-                ).images[0]
+                gen_kwargs = {
+                    "prompt": prompt,
+                    "num_inference_steps": self._inference_steps,
+                    "width": w,
+                    "height": h,
+                }
+                if turbo:
+                    gen_kwargs["guidance_scale"] = 0.0
+                else:
+                    gen_kwargs["guidance_scale"] = 7.5
 
+                image = pipe(**gen_kwargs).images[0]
                 path = output_dir / f"{orientation}.jpg"
                 path.parent.mkdir(parents=True, exist_ok=True)
                 image.save(str(path))
@@ -194,21 +189,20 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
 
         return results
 
-    @staticmethod
-    def _build_prompt(topic: str, language: Language) -> str:
-        """Build a cinematic prompt with cultural style."""
+    def _build_prompt(self, topic: str, language: Language) -> str:
+        """Build a styled prompt with cultural context."""
         cultural_style = {
             Language.TAMIL: "Indian cultural, warm golden tones, Tamil Nadu landscape",
             Language.HINDI: "Indian cultural, Bollywood cinematic, vibrant colors",
-            Language.ENGLISH: "Western cinematic, dramatic lighting, modern",
-        }.get(language, "cinematic, dramatic lighting")
+            Language.ENGLISH: "dramatic lighting, modern",
+        }.get(language, "dramatic lighting")
 
         return (
-            f"Cinematic background for motivational video about '{topic}', "
+            f"{self._image_style} style, "
+            f"scene about '{topic}', "
             f"{cultural_style}, "
-            "ultra high quality, 8k, professional photography, "
-            "dramatic lighting, bokeh background, no people, no text, "
-            "atmospheric, moody, inspirational"
+            "highly detailed, vivid colors, "
+            "professional quality, no text, no watermark"
         )
 
 
@@ -221,25 +215,20 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
 
     def __init__(self, settings: Settings) -> None:
         self._model_id = getattr(settings, "sd_model", "") or DEFAULT_SD_MODEL
-        self._inference_steps = settings.gpu.sdxl_inference_steps
+        self._image_style = getattr(settings, "image_style", "anime illustration")
+        self._inference_steps = (
+            4 if _is_turbo(self._model_id) else settings.gpu.sdxl_inference_steps
+        )
 
     def generate_scenes(
         self,
         segments: list[SceneSegment],
         output_dir: Path,
     ) -> list[VideoAsset]:
-        """Generate one image per scene segment.
-
-        Args:
-            segments: Scene segments with prompts.
-            output_dir: Directory to save images.
-
-        Returns:
-            List of VideoAsset entities (one per segment).
-        """
+        """Generate one image per scene segment."""
         try:
             import torch
-            from diffusers import StableDiffusionPipeline
+            from diffusers import AutoPipelineForText2Image
         except ImportError as e:
             raise BackgroundGenerationError(
                 "diffusers/torch not installed. Run: pip install 'ai-shorts[gpu]'",
@@ -247,36 +236,37 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
             ) from e
 
         output_dir.mkdir(parents=True, exist_ok=True)
-        negative = (
-            "text, watermark, logo, blurry, low quality, ugly, "
-            "deformed, noisy, oversaturated, cartoon, anime"
-        )
+        turbo = _is_turbo(self._model_id)
 
-        # Portrait for YouTube Shorts (512x912 fits T4 15GB VRAM)
+        # Portrait for YouTube Shorts
         width, height = 512, 912
 
         log.info(
-            "🖼️  Generating %d scene images (%s)...",
+            "🖼️  Generating %d scene images (%s, %d steps)...",
             len(segments),
             self._model_id.split("/")[-1],
+            self._inference_steps,
         )
 
         assets: list[VideoAsset] = []
 
         try:
-            pipe = StableDiffusionPipeline.from_pretrained(
+            pipe = AutoPipelineForText2Image.from_pretrained(
                 self._model_id,
                 torch_dtype=torch.float16,
+                variant="fp16" if not turbo else None,
                 safety_checker=None,
-                token=False,  # No HuggingFace auth needed
+                token=False,
             )
             pipe.enable_model_cpu_offload()
 
             for i, segment in enumerate(segments):
+                # Inject style into each scene prompt
                 prompt = (
-                    f"{segment.prompt}, cinematic lighting, "
-                    "professional photography, highly detailed, "
-                    "4k resolution, no text, no watermark"
+                    f"{self._image_style} style, "
+                    f"{segment.prompt}, "
+                    "highly detailed, vivid colors, expressive characters, "
+                    "professional quality, no text, no watermark"
                 )
                 log.info(
                     "   [%d/%d] Generating: %s",
@@ -285,14 +275,23 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
                     segment.prompt[:60],
                 )
 
-                image = pipe(
-                    prompt=prompt,
-                    negative_prompt=negative,
-                    num_inference_steps=self._inference_steps,
-                    guidance_scale=7.5,
-                    width=width,
-                    height=height,
-                ).images[0]
+                gen_kwargs = {
+                    "prompt": prompt,
+                    "num_inference_steps": self._inference_steps,
+                    "width": width,
+                    "height": height,
+                }
+
+                if turbo:
+                    gen_kwargs["guidance_scale"] = 0.0
+                else:
+                    gen_kwargs["negative_prompt"] = (
+                        "text, watermark, logo, blurry, low quality, ugly, "
+                        "deformed, extra fingers, bad anatomy"
+                    )
+                    gen_kwargs["guidance_scale"] = 7.5
+
+                image = pipe(**gen_kwargs).images[0]
 
                 path = output_dir / f"scene_{i + 1:02d}.png"
                 image.save(str(path))

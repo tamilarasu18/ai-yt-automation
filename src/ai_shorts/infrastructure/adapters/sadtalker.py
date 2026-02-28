@@ -94,11 +94,12 @@ class SadTalkerAnimator(AvatarAnimator):
             str(image_path),
             "--result_dir",
             self._output_dir,
-            "--still",
             "--preprocess",
             "crop",
             "--size",
             "256",
+            "--expression_scale",
+            "1.2",
         ] + enhancer_flag
 
         log.info("   Command: %s", " ".join(cmd[:6]) + "...")

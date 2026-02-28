@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 # Voice mapping: language → Edge TTS voice ID
 VOICE_MAP: dict[Language, str] = {
     Language.TAMIL: "ta-IN-PallaviNeural",
-    Language.ENGLISH: "en-US-AriaNeural",
+    Language.ENGLISH: "en-US-AvaMultilingualNeural",
     Language.HINDI: "hi-IN-SwaraNeural",
 }
 
@@ -66,7 +66,9 @@ class EdgeTTSVoiceGenerator(VoiceGenerator):
         log.info("🔊 Generating voice with Edge TTS (%s)...", voice_id)
 
         async def _generate() -> None:
-            communicate = edge_tts.Communicate(text, voice_id, rate="-5%")
+            communicate = edge_tts.Communicate(
+                text, voice_id, rate="-8%", pitch="+2Hz", volume="+5%"
+            )
             await communicate.save(str(output_path))
 
         try:
