@@ -2,8 +2,8 @@
 Stable Diffusion Adapter — BackgroundGenerator + SceneImageGenerator.
 
 Uses local Stable Diffusion models via the diffusers library.
-Generates single backgrounds and multi-scene images for slideshow videos.
-Supports SDXL Turbo for fast, high-quality generation.
+Default: SDXL base for high-quality, photorealistic single-image generation.
+Also supports Turbo models for fast (lower quality) generation.
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Default model — SD Turbo (fast + lightweight, fits 15GB free Drive)
-DEFAULT_SD_MODEL = "stabilityai/sd-turbo"
+# Default model — SDXL base (high quality, 25 steps, ~15s per image)
+DEFAULT_SD_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 
 # Models that use the Turbo pipeline (few-step, no guidance)
 TURBO_MODELS = {"stabilityai/sdxl-turbo", "stabilityai/sd-turbo"}
@@ -38,7 +38,8 @@ def _is_turbo(model_id: str) -> bool:
 
 def _is_sdxl(model_id: str) -> bool:
     """Check if a model is an SDXL-based model."""
-    return "sdxl" in model_id.lower()
+    lower = model_id.lower()
+    return "sdxl" in lower or "stable-diffusion-xl" in lower
 
 
 def _load_pipeline(model_id: str, torch_dtype):
@@ -74,14 +75,14 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
     Features:
     - Fully local — no API keys, no cloud dependency
     - GPU accelerated with CPU offload for low-VRAM cards
-    - Supports SDXL Turbo for fast generation (4 steps)
+    - SDXL base: 25 steps, 768x1344, photorealistic quality
     - Cultural style prompts per language
     - Automatic retry with exponential backoff
     """
 
     def __init__(self, settings: Settings) -> None:
         self._model_id = getattr(settings, "sd_model", "") or DEFAULT_SD_MODEL
-        self._image_style = getattr(settings, "image_style", "anime illustration")
+        self._image_style = getattr(settings, "image_style", "cinematic realistic")
         self._inference_steps = (
             4 if _is_turbo(self._model_id) else settings.gpu.sdxl_inference_steps
         )
@@ -104,7 +105,11 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
         )
 
         # Portrait for YouTube Shorts
-        width, height = 512, 912  # ~9:16 ratio, upscaled by MoviePy
+        # SDXL native: 768x1344 (~9:16). Non-SDXL fallback: 512x912.
+        if _is_sdxl(self._model_id):
+            width, height = 768, 1344
+        else:
+            width, height = 512, 912
         turbo = _is_turbo(self._model_id)
 
         log.info(

@@ -133,8 +133,8 @@ class Settings(BaseSettings):
     gpu: GPUConfig = Field(default_factory=GPUConfig)
 
     # API tokens
-    sd_model: str = "stabilityai/sd-turbo"
-    image_style: str = "anime illustration"
+    sd_model: str = "stabilityai/stable-diffusion-xl-base-1.0"
+    image_style: str = "cinematic realistic"
 
     # Pipeline
     max_retries: int = 3

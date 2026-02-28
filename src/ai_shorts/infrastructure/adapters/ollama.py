@@ -315,32 +315,50 @@ class OllamaImagePromptGenerator(ImagePromptGenerator):
         prompts = self.generate_scene_prompts(story_text, num_scenes=1)
         return prompts[0] if prompts else ""
 
-    def generate_scene_prompts(self, story_text: str, num_scenes: int = 5) -> list[str]:
-        """Generate multiple scene-specific image prompts from a story.
+    def generate_scene_prompts(self, story_text: str, num_scenes: int = 1) -> list[str]:
+        """Generate scene-specific image prompts from a story.
 
         Args:
             story_text: The full story text.
-            num_scenes: Number of scene prompts to generate (default 5).
+            num_scenes: Number of scene prompts to generate (default 1).
 
         Returns:
-            List of image generation prompts (one per scene).
+            List of image generation prompts.
         """
-        prompt = (
-            f"Read the following motivational story and identify exactly "
-            f"{num_scenes} KEY MOMENTS. For each moment, write a vivid "
-            f"image generation prompt.\n\n"
-            f"CRITICAL RULES:\n"
-            f"- Each prompt MUST directly depict a specific scene FROM the story\n"
-            f"- Describe the CHARACTERS, their ACTIONS, EMOTIONS, and SETTING\n"
-            f"- Include specific visual details: facial expressions, body language, environment\n"
-            f"- Each scene must be clearly different and progress the story forward\n"
-            f"- Keep prompts 15-25 words each\n"
-            f"- NO generic descriptions like 'dramatic lighting' or 'cinematic'\n"
-            f"- NO text, words, or letters in the images\n"
-            f"- Return ONLY the {num_scenes} prompts, numbered 1-{num_scenes}\n\n"
-            f"Story:\n{story_text.strip()}\n\n"
-            f"Image Prompts:"
-        )
+        if num_scenes == 1:
+            # Single rich, detailed prompt for one high-quality image
+            prompt = (
+                "Read the following story and write ONE highly detailed "
+                "image generation prompt that captures the core emotion and "
+                "theme of the entire story.\n\n"
+                "CRITICAL RULES:\n"
+                "- Write exactly ONE prompt, 30-50 words\n"
+                "- Describe the MAIN CHARACTER, their expression, body language\n"
+                "- Include the SETTING: environment, lighting, atmosphere, mood\n"
+                "- Use cinematic language: camera angle, depth of field, color palette\n"
+                "- Make it photorealistic, NOT cartoon or anime\n"
+                "- NO text, words, letters, or watermarks in the image\n"
+                "- Return ONLY the prompt, nothing else\n\n"
+                f"Story:\n{story_text.strip()}\n\n"
+                "Image Prompt:"
+            )
+        else:
+            prompt = (
+                f"Read the following motivational story and identify exactly "
+                f"{num_scenes} KEY MOMENTS. For each moment, write a vivid "
+                f"image generation prompt.\n\n"
+                f"CRITICAL RULES:\n"
+                f"- Each prompt MUST directly depict a specific scene FROM the story\n"
+                f"- Describe the CHARACTERS, their ACTIONS, EMOTIONS, and SETTING\n"
+                f"- Include specific visual details: facial expressions, body language, environment\n"
+                f"- Each scene must be clearly different and progress the story forward\n"
+                f"- Keep prompts 15-25 words each\n"
+                f"- NO generic descriptions like 'dramatic lighting' or 'cinematic'\n"
+                f"- NO text, words, or letters in the images\n"
+                f"- Return ONLY the {num_scenes} prompts, numbered 1-{num_scenes}\n\n"
+                f"Story:\n{story_text.strip()}\n\n"
+                f"Image Prompts:"
+            )
 
         raw = self._llm.generate(prompt)
         return self._parse_prompts(raw, num_scenes)

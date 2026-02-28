@@ -24,9 +24,11 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 # Voice mapping: language → Edge TTS voice ID
+# JennyNeural = warmer, softer tone (storytelling)
+# AvaMultilingual = more neutral/professional
 VOICE_MAP: dict[Language, str] = {
     Language.TAMIL: "ta-IN-PallaviNeural",
-    Language.ENGLISH: "en-US-AvaMultilingualNeural",
+    Language.ENGLISH: "en-US-JennyNeural",
     Language.HINDI: "hi-IN-SwaraNeural",
 }
 
@@ -36,6 +38,11 @@ class EdgeTTSVoiceGenerator(VoiceGenerator):
 
     Free, high-quality neural voices. No API key required.
     Supports async generation with nest_asyncio for Colab compat.
+
+    Voice tuning rationale (based on psychology research):
+    - Lower pitch → perceived as warmer, more trustworthy
+    - Slower rate (~120-150 WPM) → better comprehension for storytelling
+    - Natural volume → not "loud announcer", more intimate
     """
 
     def __init__(self, settings: Settings) -> None:
@@ -67,7 +74,7 @@ class EdgeTTSVoiceGenerator(VoiceGenerator):
 
         async def _generate() -> None:
             communicate = edge_tts.Communicate(
-                text, voice_id, rate="-8%", pitch="+2Hz", volume="+5%"
+                text, voice_id, rate="-15%", pitch="-3Hz", volume="+0%"
             )
             await communicate.save(str(output_path))
 
