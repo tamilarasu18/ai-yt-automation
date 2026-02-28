@@ -146,6 +146,7 @@ class PipelineOrchestrator:
             GenerateVoiceUseCase,
             PublishVideoUseCase,
         )
+        from concurrent.futures import ThreadPoolExecutor, Future
 
         output_dir = self._settings.output_dir / language.value
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -155,31 +156,48 @@ class PipelineOrchestrator:
             story_uc = GenerateStoryUseCase(self._container.story_generator())
             story = story_uc.execute(topic_text, language)
 
-        # ── Step 3: Generate SEO Metadata ──
-        with self._timer.step("SEO Metadata Generation"):
+        # ── Step 3: Generate SEO Metadata + Scene Prompts (same LLM, back-to-back) ──
+        with self._timer.step("SEO + Scene Prompts"):
             meta_uc = GenerateMetadataUseCase(self._container.metadata_generator())
             metadata = meta_uc.execute(topic_text, language, story.text)
 
-        # ── Step 4 + 5: Generate 5 Image Prompts → 5 Scene Images ──
-        scene_dir = output_dir / "scenes"
-        scene_images = []
-        with self._timer.step("Scene Image Generation (5 images)"):
-            scene_uc = GenerateSceneImagesUseCase(
-                prompt_generator=self._container.image_prompt_generator(),
-                scene_generator=self._container.scene_image_generator(),
-            )
-            scene_assets = scene_uc.execute(story.text, scene_dir, num_scenes=5)
-            scene_images = [asset.path for asset in scene_assets]
-        free_gpu_memory()
+            prompt_gen = self._container.image_prompt_generator()
+            log.info("🎨 Generating 5 scene prompts from story...")
+            prompts = prompt_gen.generate_scene_prompts(story.text, num_scenes=5)
+            for i, p in enumerate(prompts, 1):
+                log.info("   Scene %d: %s", i, p[:60])
 
-        # Free GPU: unload LLM before TTS/avatar
+        # Free GPU: unload LLM before image gen / TTS
         self._unload_ollama()
 
-        # ── Step 6: Generate Audio ──
+        # ── Steps 4+5+6: Generate Images + Voice IN PARALLEL ──
+        # TTS is cloud-based (Edge TTS) — uses zero GPU, safe to run alongside SD
+        scene_dir = output_dir / "scenes"
         audio_path = output_dir / "voice.wav"
-        with self._timer.step(f"Voice Synthesis ({language.display_name})"):
+
+        def _generate_voice() -> Voice:
             voice_uc = GenerateVoiceUseCase(self._container.voice_generator())
-            voice = voice_uc.execute(story.text, language, audio_path)
+            return voice_uc.execute(story.text, language, audio_path)
+
+        with self._timer.step(f"Scene Images + Voice (parallel)"):
+            # Start TTS in a background thread
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                voice_future: Future = executor.submit(_generate_voice)
+
+                # Generate images on the main thread (uses GPU)
+                from ai_shorts.domain.entities import SceneSegment
+                segments = [
+                    SceneSegment(start=0.0, end=0.0, image_number=i + 1, prompt=p)
+                    for i, p in enumerate(prompts)
+                ]
+                scene_gen = self._container.scene_image_generator()
+                scene_assets = scene_gen.generate_scenes(segments, scene_dir)
+                scene_images = [asset.path for asset in scene_assets]
+
+                # Wait for TTS to complete
+                voice = voice_future.result()
+
+        free_gpu_memory()
 
         if mode == "test":
             # Test mode: stop after story + images + audio
