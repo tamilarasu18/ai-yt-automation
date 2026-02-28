@@ -42,6 +42,40 @@ def _is_sdxl(model_id: str) -> bool:
     return "sdxl" in lower or "stable-diffusion-xl" in lower
 
 
+# Minimum GPU VRAM (GB) to load model directly on GPU.
+# Below this threshold, use CPU offload (slower but avoids OOM).
+_GPU_DIRECT_THRESHOLD_GB = 10.0
+
+
+def _move_to_device(pipe):
+    """Load pipeline onto the best available device.
+
+    - GPU with >= 10 GB VRAM  ->  pipe.to("cuda")   (fast, full GPU)
+    - GPU with <  10 GB VRAM  ->  CPU offload        (slow, saves VRAM)
+    - No GPU                  ->  stays on CPU
+    """
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+            if vram_gb >= _GPU_DIRECT_THRESHOLD_GB:
+                log.info("   GPU: %.1fGB VRAM — loading directly to CUDA", vram_gb)
+                pipe.to("cuda")
+            else:
+                log.info(
+                    "   GPU: %.1fGB VRAM (<%.0fGB) — using CPU offload",
+                    vram_gb,
+                    _GPU_DIRECT_THRESHOLD_GB,
+                )
+                pipe.enable_model_cpu_offload()
+        else:
+            log.warning("   No GPU — running on CPU (very slow)")
+    except Exception:
+        pipe.enable_model_cpu_offload()
+    return pipe
+
+
 def _load_pipeline(model_id: str, torch_dtype):
     """Load the correct diffusers pipeline for the model.
 
@@ -122,7 +156,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
 
         try:
             pipe = _load_pipeline(self._model_id, torch_dtype=torch.float16)
-            pipe.enable_model_cpu_offload()
+            _move_to_device(pipe)
 
             gen_kwargs = {
                 "prompt": prompt,
@@ -177,7 +211,7 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
 
         try:
             pipe = _load_pipeline(self._model_id, torch_dtype=torch.float16)
-            pipe.enable_model_cpu_offload()
+            _move_to_device(pipe)
 
             for orientation, (w, h) in formats.items():
                 log.info("   Generating %s (%dx%d)...", orientation, w, h)
@@ -276,7 +310,7 @@ class StableDiffusionSceneImageGenerator(SceneImageGenerator):
 
         try:
             pipe = _load_pipeline(self._model_id, torch_dtype=torch.float16)
-            pipe.enable_model_cpu_offload()
+            _move_to_device(pipe)
 
             for i, segment in enumerate(segments):
                 # Inject style into each scene prompt
