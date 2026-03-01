@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import subprocess
 import time
@@ -126,7 +125,7 @@ class OllamaLLMService(LLMService):
         except Exception as e:
             if "not found" in str(e).lower() or "404" in str(e):
                 log.info("📥 Pulling model '%s' (first time, may take minutes)...", model)
-                os.system(f"ollama pull {model}")
+                subprocess.run(["ollama", "pull", model], timeout=600)
                 with urllib.request.urlopen(req, timeout=300) as resp:
                     result = json.loads(resp.read().decode("utf-8"))
                     return result.get("response", "").strip()
@@ -136,7 +135,12 @@ class OllamaLLMService(LLMService):
         """Unload models from GPU to free VRAM."""
         try:
             model = self._default_model
-            os.system(f"ollama stop {model} > /dev/null 2>&1")
+            subprocess.run(
+                ["ollama", "stop", model],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+            )
             req = urllib.request.Request(
                 f"{self._host}/api/generate",
                 data=json.dumps({"model": model, "keep_alive": 0}).encode(),

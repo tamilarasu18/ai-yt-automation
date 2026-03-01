@@ -102,19 +102,29 @@ class SDXLBackgroundGenerator(BackgroundGenerator):
                 f"SDXL background generation failed: {e}", cause=e
             ) from e
 
-    @staticmethod
-    def _build_prompt(topic: str, language: Language) -> str:
-        """Build an SDXL prompt for cinematic background."""
+    # CLIP tokenizer limit: 77 tokens ≈ ~300 characters.
+    # Prompt template overhead is ~100 chars, so topic must be ≤ 200 chars.
+    _MAX_TOPIC_CHARS = 200
+
+    @classmethod
+    def _build_prompt(cls, topic: str, language: Language) -> str:
+        """Build an SDXL prompt for cinematic background.
+
+        Keeps the total prompt under CLIP's 77-token limit to avoid
+        truncation of important visual details.
+        """
+        # Truncate topic to stay within CLIP budget
+        truncated = topic[:cls._MAX_TOPIC_CHARS].rsplit(" ", 1)[0] if len(topic) > cls._MAX_TOPIC_CHARS else topic
+
         cultural_style = {
-            Language.TAMIL: "Indian cultural, warm golden tones, Tamil Nadu landscape",
-            Language.HINDI: "Indian cultural, Bollywood cinematic, vibrant colors",
-            Language.ENGLISH: "Western cinematic, dramatic lighting, modern",
-        }.get(language, "cinematic, dramatic lighting")
+            Language.TAMIL: "Indian, warm golden tones",
+            Language.HINDI: "Indian, Bollywood cinematic",
+            Language.ENGLISH: "cinematic, dramatic lighting",
+        }.get(language, "cinematic")
 
         return (
-            f"Cinematic background for motivational video about '{topic}', "
+            f"{truncated}, "
             f"{cultural_style}, "
-            "ultra high quality, 8k, professional photography, "
-            "dramatic lighting, bokeh background, no people, no text, "
-            "atmospheric, moody, inspirational"
+            "8k, professional photography, bokeh, "
+            "no text, atmospheric, moody"
         )

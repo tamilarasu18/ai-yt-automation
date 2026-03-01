@@ -248,20 +248,28 @@ class StableDiffusionBackgroundGenerator(BackgroundGenerator):
 
         return results
 
+    # CLIP tokenizer limit: 77 tokens ≈ ~300 characters.
+    _MAX_TOPIC_CHARS = 200
+
     def _build_prompt(self, topic: str, language: Language) -> str:
-        """Build a styled prompt with cultural context."""
+        """Build a styled prompt with cultural context.
+
+        Keeps the total prompt under CLIP's 77-token limit to avoid
+        truncation of important visual details.
+        """
+        # Truncate topic to stay within CLIP budget
+        truncated = topic[:self._MAX_TOPIC_CHARS].rsplit(" ", 1)[0] if len(topic) > self._MAX_TOPIC_CHARS else topic
+
         cultural_style = {
-            Language.TAMIL: "Indian cultural, warm golden tones, Tamil Nadu landscape",
-            Language.HINDI: "Indian cultural, Bollywood cinematic, vibrant colors",
-            Language.ENGLISH: "dramatic lighting, modern",
-        }.get(language, "dramatic lighting")
+            Language.TAMIL: "Indian, warm golden tones",
+            Language.HINDI: "Indian, Bollywood cinematic",
+            Language.ENGLISH: "cinematic, dramatic lighting",
+        }.get(language, "cinematic")
 
         return (
-            f"{self._image_style} style, "
-            f"scene about '{topic}', "
+            f"{self._image_style}, {truncated}, "
             f"{cultural_style}, "
-            "highly detailed, vivid colors, "
-            "professional quality, no text, no watermark"
+            "vivid colors, no text, no watermark"
         )
 
 

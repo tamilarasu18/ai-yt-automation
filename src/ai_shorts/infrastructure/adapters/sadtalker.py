@@ -103,7 +103,17 @@ class SadTalkerAnimator(AvatarAnimator):
         ] + enhancer_flag
 
         log.info("   Command: %s", " ".join(cmd[:6]) + "...")
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=self._sadtalker_dir)
+
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True,
+                cwd=self._sadtalker_dir, timeout=600,  # 10-minute timeout
+            )
+        except subprocess.TimeoutExpired:
+            log.warning(
+                "⚠️  SadTalker timed out after 10 minutes, using Ken Burns fallback..."
+            )
+            return self._ken_burns_fallback(audio_path, image_path, output_path)
 
         if result.returncode != 0:
             log.warning(
@@ -351,10 +361,14 @@ class SadTalkerAnimator(AvatarAnimator):
 
     @staticmethod
     def _ensure_dependencies() -> None:
-        """Install missing SadTalker dependencies."""
-        deps = ["kornia", "facexlib", "gfpgan", "basicsr", "dlib"]
+        """Install missing SadTalker dependencies.
+
+        dlib is separated because it requires CMake + C++ compiler
+        and may fail on systems without build tools.
+        """
+        pip_deps = ["kornia", "facexlib", "gfpgan", "basicsr"]
         missing = []
-        for pkg in deps:
+        for pkg in pip_deps:
             try:
                 __import__(pkg)
             except ImportError:
@@ -367,3 +381,20 @@ class SadTalkerAnimator(AvatarAnimator):
                 capture_output=True,
                 text=True,
             )
+
+        # dlib requires CMake + C++ compiler — install separately with warning
+        try:
+            __import__("dlib")
+        except ImportError:
+            log.info("📦 Installing dlib (requires CMake + C++ compiler)...")
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-q", "dlib"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                log.warning(
+                    "⚠️  dlib installation failed. Install CMake and a C++ compiler, "
+                    "then run: pip install dlib\n   Error: %s",
+                    result.stderr[-300:] if result.stderr else "(unknown)",
+                )
