@@ -114,7 +114,11 @@ class SDXLBackgroundGenerator(BackgroundGenerator):
         truncation of important visual details.
         """
         # Truncate topic to stay within CLIP budget
-        truncated = topic[:cls._MAX_TOPIC_CHARS].rsplit(" ", 1)[0] if len(topic) > cls._MAX_TOPIC_CHARS else topic
+        truncated = (
+            topic[: cls._MAX_TOPIC_CHARS].rsplit(" ", 1)[0]
+            if len(topic) > cls._MAX_TOPIC_CHARS
+            else topic
+        )
 
         cultural_style = {
             Language.TAMIL: "Indian, warm golden tones",

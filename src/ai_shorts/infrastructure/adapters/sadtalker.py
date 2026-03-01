@@ -106,13 +106,14 @@ class SadTalkerAnimator(AvatarAnimator):
 
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True,
-                cwd=self._sadtalker_dir, timeout=600,  # 10-minute timeout
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=self._sadtalker_dir,
+                timeout=600,  # 10-minute timeout
             )
         except subprocess.TimeoutExpired:
-            log.warning(
-                "⚠️  SadTalker timed out after 10 minutes, using Ken Burns fallback..."
-            )
+            log.warning("⚠️  SadTalker timed out after 10 minutes, using Ken Burns fallback...")
             return self._ken_burns_fallback(audio_path, image_path, output_path)
 
         if result.returncode != 0:
